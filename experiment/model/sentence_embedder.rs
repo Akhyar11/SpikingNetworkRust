@@ -67,8 +67,10 @@ impl SpikingSentenceEmbedder {
         let mut tokenized_batch = Vec::with_capacity(batch_size * self.max_seq_length);
 
         // Tahap 1: Tokenisasi & Padding
-        for text in texts {
+        let mut actual_lengths = vec![0; batch_size];
+        for (b, text) in texts.iter().enumerate() {
             let mut tokens = self.tokenizer.encode(text);
+            actual_lengths[b] = tokens.len().min(self.max_seq_length);
             if tokens.len() > self.max_seq_length {
                 tokens.truncate(self.max_seq_length);
             }
@@ -83,7 +85,7 @@ impl SpikingSentenceEmbedder {
         let emb_out = self.embedding.forward(&tokenized_batch);
 
         // Tahap 3: Spiking Self-Attention (Pencarian Konteks Global)
-        let att_out = self.attention.forward(&emb_out);
+        let att_out = self.attention.forward(&emb_out, &actual_lengths);
 
         // Tahap 4: Temporal Pooling dengan BPTT (Integrasi Waktu)
         self.pooler.reset_sequence(batch_size, self.max_seq_length);
@@ -92,26 +94,32 @@ impl SpikingSentenceEmbedder {
         for t in 0..self.max_seq_length {
             let mut step_input = vec![0.0; batch_size * self.pooler.in_features];
             for b in 0..batch_size {
-                let base_idx = (b * self.max_seq_length + t) * self.pooler.in_features;
-                for i in 0..self.pooler.in_features {
-                    step_input[b * self.pooler.in_features + i] = att_out[base_idx + i];
+                if t < actual_lengths[b] {
+                    let base_idx = (b * self.max_seq_length + t) * self.pooler.in_features;
+                    for i in 0..self.pooler.in_features {
+                        step_input[b * self.pooler.in_features + i] = att_out[base_idx + i];
+                    }
                 }
             }
 
             let spikes = self.pooler.compute_step(&step_input, t);
 
-            // Akumulasi potensi/spike untuk mean pooling
+            // Akumulasi potensi/spike untuk mean pooling HANYA untuk token non-padding
             for b in 0..batch_size {
-                for i in 0..self.pooler.units {
-                    final_embeddings[b][i] += spikes[b * self.pooler.units + i];
+                if t < actual_lengths[b] {
+                    for i in 0..self.pooler.units {
+                        final_embeddings[b][i] += spikes[b * self.pooler.units + i];
+                    }
                 }
             }
         }
 
         // Tahap 5: Mean Pooling dan L2 Normalization (Memproyeksikan ke Permukaan Bola Semantik)
         for b in 0..batch_size {
+            let len_f32 = actual_lengths[b] as f32;
+            let len_f32 = if len_f32 == 0.0 { 1.0 } else { len_f32 };
             for i in 0..self.pooler.units {
-                final_embeddings[b][i] /= self.max_seq_length as f32; 
+                final_embeddings[b][i] /= len_f32; 
             }
             
             let mut sum_sq = 0.0;

@@ -80,7 +80,7 @@ impl SpikingSelfAttention {
     }
 
     /// Linear Attention: Q * (K^T * V) untuk mengatasi O(N^2)
-    pub fn forward(&mut self, inputs: &[f32]) -> Vec<f32> {
+    pub fn forward(&mut self, inputs: &[f32], actual_lengths: &[usize]) -> Vec<f32> {
         let batch_seq = inputs.len() / self.d_model;
         let batch = batch_seq / self.sequence_length;
         
@@ -88,9 +88,8 @@ impl SpikingSelfAttention {
             panic!("Jumlah input tidak sesuai dengan kelipatan sequence_length!");
         }
 
-        if self.potentials_q.len() != batch_seq * self.d_model {
-            self.reset_state(batch);
-        }
+        // ALWAYS reset state on every forward pass to prevent potentials leaking across batches
+        self.reset_state(batch);
 
         self.last_inputs = Some(inputs.to_vec());
 
@@ -121,7 +120,9 @@ impl SpikingSelfAttention {
             let mut kv_matrix = vec![0.0; self.d_model * self.d_model];
 
             // A: K^T * V
+            let len_f32 = if actual_lengths[b] == 0 { 1.0 } else { actual_lengths[b] as f32 };
             for i in 0..self.sequence_length {
+                if i >= actual_lengths[b] { continue; }
                 let base_idx = (b * self.sequence_length + i) * self.d_model;
                 let mut non_zero_k = Vec::with_capacity(self.d_model);
                 let mut non_zero_v = Vec::with_capacity(self.d_model);
@@ -133,13 +134,14 @@ impl SpikingSelfAttention {
 
                 for &d1 in &non_zero_k {
                     for &d2 in &non_zero_v {
-                        kv_matrix[d1 * self.d_model + d2] += 1.0 / self.sequence_length as f32;
+                        kv_matrix[d1 * self.d_model + d2] += 1.0 / len_f32;
                     }
                 }
             }
 
             // B: Q * (K^T * V)
             for i in 0..self.sequence_length {
+                if i >= actual_lengths[b] { continue; }
                 let base_idx = (b * self.sequence_length + i) * self.d_model;
                 let mut non_zero_q = Vec::with_capacity(self.d_model);
                 for d in 0..self.d_model {

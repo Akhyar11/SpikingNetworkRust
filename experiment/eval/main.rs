@@ -56,7 +56,9 @@ fn pearson_correlation(x: &[f32], y: &[f32]) -> f32 {
     let sum_xy: f32 = x.iter().zip(y.iter()).map(|(&a, &b)| a * b).sum();
 
     let numerator = n * sum_xy - sum_x * sum_y;
-    let denominator = ((n * sum_x_sq - sum_x * sum_x) * (n * sum_y_sq - sum_y * sum_y)).sqrt();
+    let var_x = (n * sum_x_sq - sum_x * sum_x).max(0.0);
+    let var_y = (n * sum_y_sq - sum_y * sum_y).max(0.0);
+    let denominator = (var_x * var_y).sqrt();
     
     if denominator == 0.0 { 0.0 } else { numerator / denominator }
 }
