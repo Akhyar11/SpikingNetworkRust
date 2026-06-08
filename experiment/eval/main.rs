@@ -106,7 +106,7 @@ fn main() {
         clip_max: 1.0,
         att_beta_range: (0.8, 0.99),
         att_threshold_range: (0.1, 0.3),
-        bptt_beta_range: (0.8, 0.99),
+        bptt_beta_range: (0.5, 0.99),
         bptt_threshold_range: (0.5, 1.0),
     };
     let mut embedder = SpikingSentenceEmbedder::new(tokenizer, vocab_size, snn_config);
@@ -128,8 +128,9 @@ fn main() {
     println!("Mulai Evaluasi SNN (Total: {} pasang kalimat)...", total);
 
     for pair in dataset {
-        let texts = [pair.sentence1.as_str(), pair.sentence2.as_str()];
-        // Panggil Forward Pass (Inference)
+        let s1 = pair.sentence1.to_lowercase();
+        let s2 = pair.sentence2.to_lowercase();
+        let texts = [s1.as_str(), s2.as_str()];
         let embeddings = embedder.encode(&texts);
         
         let sim = cosine_similarity(&embeddings[0], &embeddings[1]);

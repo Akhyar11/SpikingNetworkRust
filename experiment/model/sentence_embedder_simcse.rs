@@ -176,7 +176,10 @@ impl SpikingSentenceEmbedder {
         final_embeddings
     }
 
-    pub fn train_step(&mut self, texts: &[&str], num_pairs: usize, margin: f32) -> (f32, f32, f32) {
+    pub fn train_step(&mut self, texts: &[&str], num_pairs: usize, margin: f32, dropout_rate: f32) -> (f32, f32, f32) {
+        use rand::Rng;
+        let mut rng = rand::thread_rng();
+
         self.zero_pad_token();
         let batch_size = texts.len();
         self.embedding.reset_state();
@@ -204,7 +207,19 @@ impl SpikingSentenceEmbedder {
         let d_model = self.embedding.output_dim;
 
         // LAYER 1: EMBEDDING
-        let spikes1 = self.embedding.forward(&tokenized_batch);
+        let mut spikes1 = self.embedding.forward(&tokenized_batch);
+        
+        // --- SimCSE Dropout Injection ---
+        // Matikan letupan (spikes) secara acak sebesar dropout_rate untuk menciptakan "Neuron Noise"
+        if dropout_rate > 0.0 {
+            for val in spikes1.iter_mut() {
+                if *val > 0.0 && rng.gen_bool(dropout_rate as f64) {
+                    *val = 0.0;
+                }
+            }
+        }
+        // --------------------------------
+
         let mut err_emb_data = vec![0.0; batch_seq * d_model];
         let loss1 = SpikingNetworkRust::core::contrastiveHebbian::contrastiveHebbian(
             &spikes1, &mut err_emb_data, num_pairs, self.max_seq_length, d_model, margin, &actual_lengths
@@ -219,6 +234,16 @@ impl SpikingSentenceEmbedder {
             let combined = spikes1[i] + att_val;
             spikes2[i] = if combined > 0.5 { 1.0 } else { 0.0 };
         }
+
+        // --- SimCSE Dropout Injection ---
+        if dropout_rate > 0.0 {
+            for val in spikes2.iter_mut() {
+                if *val > 0.0 && rng.gen_bool(dropout_rate as f64) {
+                    *val = 0.0;
+                }
+            }
+        }
+        // --------------------------------
 
         let mut err_att_data = vec![0.0; batch_seq * d_model];
         let loss2 = SpikingNetworkRust::core::contrastiveHebbian::contrastiveHebbian(
@@ -267,7 +292,7 @@ impl SpikingSentenceEmbedder {
         }
 
         let mut error_final_data = vec![0.0; batch_size * self.pooler.units];
-        let dummy_lengths = vec![1; batch_size];
+        let dummy_lengths = vec![1; batch_size]; // Karena sudah dipooling jadi 1 step
         let pooler_loss = SpikingNetworkRust::core::contrastiveHebbian::contrastiveHebbian(
             &normalized_out_data, &mut error_final_data, num_pairs, 1, self.pooler.units, margin, &dummy_lengths
         );

@@ -34,7 +34,8 @@ impl SpikingEmbedding {
         let mut beta = vec![0.0; output_dim];
         let mut threshold = vec![0.0; output_dim];
         for i in 0..output_dim {
-            beta[i] = rng.gen_range(0.8..0.99);
+            let shift = rng.gen_range(2..8) as i32; // 2 to 7 (equivalent to Math.floor(2 + Math.random() * 6))
+            beta[i] = 1.0 - (1.0 / (1 << shift) as f32);
             threshold[i] = rng.gen_range(0.01..0.1);
         }
 

@@ -56,7 +56,8 @@ impl SpikingSelfAttention {
         let mut beta_qkv = vec![0.0; d_model];
         let mut threshold_qkv = vec![0.0; d_model];
         for i in 0..d_model {
-            beta_qkv[i] = rng.gen_range(beta_range.0 .. beta_range.1);
+            let shift = rng.gen_range(2..8) as i32; // 2 to 7 (Math.floor(2 + Math.random() * 6))
+            beta_qkv[i] = 1.0 - (1.0 / (1 << shift) as f32);
             threshold_qkv[i] = rng.gen_range(threshold_range.0 .. threshold_range.1);
         }
 

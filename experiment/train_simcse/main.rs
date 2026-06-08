@@ -1,4 +1,4 @@
-#[path = "../model/sentence_embedder.rs"]
+#[path = "../model/sentence_embedder_simcse.rs"]
 pub mod sentence_embedder;
 
 use SpikingNetworkRust::core::bpe::BPETokenizer;
@@ -11,45 +11,10 @@ use std::fs::File;
 use std::io::{BufRead, BufReader, Write};
 use std::time::Instant;
 
-// Fungsi Trik Unsupervised: Membuat Positive Sample (P+) dengan Noise/Masking (Aggressive)
+// Fungsi Trik Unsupervised SimCSE: P adalah teks yang identik dengan Q!
+// Perbedaan/variasi diberikan dari Dropout di dalam network, bukan di teks.
 fn corrupt_sentence(sentence: &str) -> String {
-    let mut words: Vec<String> = sentence.split_whitespace().map(|s| s.to_string()).collect();
-    let mut rng = rand::thread_rng();
-
-    if words.len() > 3 {
-        let drop_count = 2.max((words.len() as f32 * 0.25) as usize);
-        for _ in 0..drop_count {
-            if words.len() <= 2 { break; }
-
-            let drop_type: f32 = rng.gen_range(0.0..1.0);
-            let target_idx = rng.gen_range(0..words.len());
-
-            if drop_type < 0.4 {
-                // 40% Peluang: Hapus 1 kata penuh
-                words.remove(target_idx);
-            } else if drop_type < 0.8 {
-                // 40% Peluang: Hapus 1 huruf di dalam kata (Typo)
-                let target_word = &words[target_idx];
-                if target_word.len() > 3 {
-                    let char_idx = rng.gen_range(0..target_word.len());
-                    let mut new_word = String::new();
-                    for (i, c) in target_word.chars().enumerate() {
-                        if i != char_idx {
-                            new_word.push(c);
-                        }
-                    }
-                    words[target_idx] = new_word;
-                } else {
-                    words.remove(target_idx);
-                }
-            } else {
-                // 20% Peluang: Duplikasi/Pengulangan kata (Gagap)
-                let dup = words[target_idx].clone();
-                words.insert(target_idx, dup);
-            }
-        }
-    }
-    words.join(" ")
+    sentence.to_string()
 }
 
 fn main() {
@@ -64,10 +29,11 @@ fn main() {
     
     // Hyperparameters (Metadata Pelatihan)
     let d_model = 256;
-    let max_seq_length = 32; // Diubah sesuai permintaan
+    let max_seq_length = 128; // Diubah sesuai permintaan
     let num_pairs = 32;       // Mengikuti referensi train_wiki_unsupervised.ts
     let _batch_size = num_pairs * 2; // Total 64 kalimat per batch
-    let num_epochs = 1;
+    let num_epochs = 10;
+    let min_words = 10;
 
     // SNN Hyperparameters diletakkan di sini sesuai permintaan
     let snn_config = sentence_embedder::SNNConfig {
@@ -89,29 +55,22 @@ fn main() {
     embedder.summary();
     
     println!("Menganalisa corpus untuk menghitung total step...");
-    let mut valid_lines_count = 0;
+    
+    let mut all_lines = Vec::new();
     if let Ok(file) = File::open(corpus_path) {
         let reader = BufReader::new(file);
         for line in reader.lines() {
             if let Ok(l) = line {
-                let q_line = l.trim();
-                if !q_line.is_empty() && q_line.len() >= 31 {
-                    valid_lines_count += 1;
+                let trim = l.trim();
+                if !trim.is_empty() && trim.split_whitespace().count() >= min_words {
+                    all_lines.push(trim.to_string());
                 }
             }
         }
+    } else {
+        panic!("Gagal membuka corpus di path: {}", corpus_path);
     }
-    let mut all_lines = Vec::new();
-    let file = File::open(corpus_path).expect("Gagal membuka corpus.");
-    let reader = BufReader::new(file);
-    for line in reader.lines() {
-        if let Ok(l) = line {
-            let trim = l.trim();
-            if !trim.is_empty() && trim.len() >= 31 {
-                all_lines.push(trim.to_string());
-            }
-        }
-    }
+    
     let valid_lines_count = all_lines.len();
     let max_steps_per_epoch = if valid_lines_count > 0 { valid_lines_count / num_pairs } else { 1 };
     println!("Total kalimat valid: {}, Estimasi {} step per epoch", valid_lines_count, max_steps_per_epoch);
@@ -122,6 +81,10 @@ fn main() {
     let mut best_loss = f32::MAX;
     let mut patience_counter = 0;
     let patience_limit = 2; // Berhenti jika loss tidak membaik selama 2 epoch berturut-turut
+
+    let mut global_step = 0;
+    let total_global_steps = max_steps_per_epoch * num_epochs;
+    let dropout_rate = 0.1; // 10% neuron spikes will be dropped randomly
 
     for epoch in 1..=num_epochs {
         let mut step = 0;
@@ -138,7 +101,8 @@ fn main() {
         let mut p_texts = Vec::new();
         
         for q_line in &all_lines {
-            let p_line = corrupt_sentence(q_line);
+            // P adalah Q yang persis sama, perbedaan akan didapat dari Dropout!
+            let p_line = corrupt_sentence(q_line); 
             
             q_texts.push(q_line.clone());
             p_texts.push(p_line);
@@ -148,10 +112,11 @@ fn main() {
                 for q in &q_texts { batch_texts.push(q.as_str()); }
                 for p in &p_texts { batch_texts.push(p.as_str()); }
 
-                let current_lr = 0.01 * f32::max(0.01, 1.0 - (step as f32 / max_steps_per_epoch as f32));
+                // Hitung decay berdasarkan GLOBAL STEP, bukan step per epoch!
+                let current_lr = 0.01 * f32::max(0.01, 1.0 - (global_step as f32 / total_global_steps as f32));
                 embedder.set_learning_rate(current_lr);
 
-                let (loss1, loss2, loss3) = embedder.train_step(&batch_texts, num_pairs, margin);
+                let (loss1, loss2, loss3) = embedder.train_step(&batch_texts, num_pairs, margin, dropout_rate);
                 
                 epoch_loss_l1 += loss1;
                 epoch_loss_l2 += loss2;
@@ -160,6 +125,7 @@ fn main() {
                 q_texts.clear();
                 p_texts.clear();
                 step += 1;
+                global_step += 1;
 
                 if step % 10 == 0 {
                     let elapsed_interval = last_log_time.elapsed();

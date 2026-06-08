@@ -8,24 +8,24 @@ pub fn contrastiveHebbian(
     num_pairs: usize,
     sequence_length: usize,
     d_model: usize,
-    margin: f32
+    margin: f32,
+    actual_lengths: &[usize]
 ) -> f32 {
     let mut total_loss: f32 = 0.0;
 
-    // Kita asumsikan `spikes` ini sebenarnya adalah float embedding L2-Normalized dari tahapan sebelumnya.
-    // Jika mereka adalah L2 Normalized, ||q-p||^2 = 2 - 2(q . p).
-    // Jadi Loss = max(0, (q.n) - (q.p) + margin)
-    
-    // Karena butuh state penuh, lebih aman diserialkan di sini untuk memastikan thread-safety.
-    // Rayon masih bisa dipakai untuk pair_losses, namun kita simpan iterasi untuk mutasi.
-    
     for i in 0..num_pairs {
         let q_offset = i * sequence_length * d_model;
         let p_offset = (num_pairs + i) * sequence_length * d_model;
         let neg_idx = (i + 1) % num_pairs;
         let n_offset = (num_pairs + neg_idx) * sequence_length * d_model;
+        let q_len = actual_lengths[i];
 
         for s in 0..sequence_length {
+            // MENGABAIKAN PADDING: Jangan hitung loss atau berikan energi pada token padding
+            if s >= q_len {
+                continue;
+            }
+
             for d in 0..d_model {
                 let idx_q = q_offset + s * d_model + d;
                 let idx_p = p_offset + s * d_model + d;
