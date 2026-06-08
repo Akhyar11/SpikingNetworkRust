@@ -229,8 +229,8 @@ impl SpikingSelfAttention {
                     if in_val > 0.0 {
                         let k_offset = i * self.d_model;
                         for d in 0..self.d_model {
-                            // Residu dopamin agar dead neuron tetap hidup kembali secara bertahap
-                            let dopamine = 0.00005;
+                            // Dopamin di-set 0 karena inisialisasi awal sudah di-scale up, tidak perlu revive paksa
+                            let dopamine = 0.0;
                             let delta = (lr * error_signal[offset + d] * in_val) + dopamine;
                             
                             let mut nq = self.kernel_q[k_offset + d] + delta;

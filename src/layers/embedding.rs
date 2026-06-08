@@ -93,7 +93,7 @@ impl SpikingEmbedding {
     pub fn reset_state(&mut self) {
         for p in self.potentials.iter_mut() { *p = 0.0; }
         for lp in self.last_potentials.iter_mut() { *lp = 0.0; }
-        self.last_inputs = None;
+        self.cached_inputs = None;
         self.last_spikes = None;
     }
 

@@ -44,8 +44,9 @@ impl SpikingDenseBPTT {
         let limit = (6.0 / (in_features as f32 + units as f32)).sqrt();
         
         let mut kernel = vec![0.0; in_features * units];
+        let scale = (in_features as f32).sqrt();
         for w in kernel.iter_mut() {
-            *w = rng.gen_range(-limit..limit);
+            *w = rng.gen_range(-limit..limit) * scale;
         }
 
         let bias = vec![0.0; units];
