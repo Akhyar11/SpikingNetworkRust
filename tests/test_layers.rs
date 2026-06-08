@@ -62,3 +62,34 @@ fn test_spiking_dense_bptt() {
     bptt.learn_through_time(&error_sequence, 0.01); 
     // Jika tak ada panic / array index out of bounds, tes ini lulus.
 }
+
+#[test]
+fn test_spiking_self_attention() {
+    use SpikingNetworkRust::layers::self_attention::SpikingSelfAttention;
+    use SpikingNetworkRust::layers::base::Layer;
+
+    let d_model = 16;
+    let seq_length = 4;
+    let batch_size = 2;
+    
+    let mut attention = SpikingSelfAttention::new(d_model, seq_length, 0.01, -1.0, 1.0, (0.8, 0.99), (0.1, 0.3));
+
+    // Dummy inputs: batch_size * seq_length * d_model
+    let mut inputs = vec![0.0; batch_size * seq_length * d_model];
+    // Fill some random spikes
+    inputs[0] = 1.0;
+    inputs[5] = 1.0;
+    inputs[16] = 1.0;
+    inputs[25] = 1.0;
+
+    let output = attention.forward(&inputs);
+    assert_eq!(output.len(), batch_size * seq_length * d_model);
+
+    // Test learning
+    let mut error_signal = vec![0.0; batch_size * seq_length * d_model];
+    error_signal[0] = 0.5;
+    attention.learn_attention(&error_signal);
+
+    // Test summary
+    attention.summary();
+}
