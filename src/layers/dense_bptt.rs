@@ -177,6 +177,8 @@ impl SpikingDenseBPTT {
                     let idx = offset + i;
                     temporal_error_data[idx] = masked_error_data[idx] * self.beta[i];
                 }
+            }
+
             // E: Hitung gradien untuk input layer sebelumnya (error wrt inputs)
             for b in 0..batch_size {
                 let out_offset = b * self.units;
@@ -190,7 +192,7 @@ impl SpikingDenseBPTT {
                     error_wrt_inputs[t][in_offset + in_d] = sum;
                 }
             }
-        }
+        } // Penutup loop waktu t
         
         error_wrt_inputs
     }
