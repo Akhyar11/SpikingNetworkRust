@@ -16,11 +16,19 @@ struct STSPair {
     score: f32,
 }
 
-fn load_model(embedder: &mut SpikingSentenceEmbedder, path: &str) {
+fn load_model(path: &str) -> (serde_json::Value, usize, usize) {
     let file = File::open(path).unwrap_or_else(|_| panic!("Gagal buka file model di {}. Anda mungkin harus menjalankan proses train minimal 1 iterasi terlebih dahulu.", path));
     let reader = BufReader::new(file);
     let model_data: serde_json::Value = serde_json::from_reader(reader).expect("Gagal memecah data model JSON");
 
+    // Jika model_data tidak menyimpan d_model dan max_seq_length, kita bisa ambil default (64 dan 128)
+    let d_model = model_data.get("d_model").and_then(|v| v.as_u64()).unwrap_or(64) as usize;
+    let max_seq_length = model_data.get("max_seq_length").and_then(|v| v.as_u64()).unwrap_or(128) as usize;
+
+    (model_data, d_model, max_seq_length)
+}
+
+fn apply_weights(embedder: &mut SpikingSentenceEmbedder, model_data: &serde_json::Value) {
     let mut load_layer = |layer: &mut dyn Layer, group: &str| {
         if let Some(obj) = model_data.get(group).and_then(|v| v.as_object()) {
             for (k, v) in obj {
@@ -61,14 +69,13 @@ fn main() {
     println!("Memuat tokenizer...");
     let tokenizer = BPETokenizer::load(vocab_path);
     let vocab_size = tokenizer.vocab_size();
-    let d_model = 64; // Harus presisi sama dengan di training
-    let max_seq_length = 32;
+    println!("Memuat bobot parameter dari disk ({})...", model_save_path);
+    let (model_data, d_model, max_seq_length) = load_model(model_save_path);
 
-    println!("Inisialisasi arsitektur jaringan SpikingSentenceEmbedder...");
+    println!("Inisialisasi arsitektur jaringan SpikingSentenceEmbedder (D_Model: {}, Max_Seq: {})...", d_model, max_seq_length);
     let mut embedder = SpikingSentenceEmbedder::new(tokenizer, vocab_size, d_model, max_seq_length);
     
-    println!("Memuat bobot parameter dari disk ({})...", model_save_path);
-    load_model(&mut embedder, model_save_path);
+    apply_weights(&mut embedder, &model_data);
 
     println!("Membuka dataset evaluasi dari {}...", eval_dataset_path);
     let eval_file = File::open(eval_dataset_path).expect("File dataset sts-b_valid.json tidak ditemukan!");

@@ -5,10 +5,52 @@ use SpikingNetworkRust::core::bpe::BPETokenizer;
 use SpikingNetworkRust::layers::base::Layer;
 use SpikingNetworkRust::core::contrastiveHebbian::contrastiveHebbian;
 use sentence_embedder::SpikingSentenceEmbedder;
+use rand::Rng;
 use serde_json::json;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Write};
 use std::time::Instant;
+
+// Fungsi Trik Unsupervised: Membuat Positive Sample (P+) dengan Noise/Masking (Aggressive)
+fn corrupt_sentence(sentence: &str) -> String {
+    let mut words: Vec<String> = sentence.split_whitespace().map(|s| s.to_string()).collect();
+    let mut rng = rand::thread_rng();
+
+    if words.len() > 3 {
+        let drop_count = 2.max((words.len() as f32 * 0.25) as usize);
+        for _ in 0..drop_count {
+            if words.len() <= 2 { break; }
+
+            let drop_type: f32 = rng.gen_range(0.0..1.0);
+            let target_idx = rng.gen_range(0..words.len());
+
+            if drop_type < 0.4 {
+                // 40% Peluang: Hapus 1 kata penuh
+                words.remove(target_idx);
+            } else if drop_type < 0.8 {
+                // 40% Peluang: Hapus 1 huruf di dalam kata (Typo)
+                let target_word = &words[target_idx];
+                if target_word.len() > 3 {
+                    let char_idx = rng.gen_range(0..target_word.len());
+                    let mut new_word = String::new();
+                    for (i, c) in target_word.chars().enumerate() {
+                        if i != char_idx {
+                            new_word.push(c);
+                        }
+                    }
+                    words[target_idx] = new_word;
+                } else {
+                    words.remove(target_idx);
+                }
+            } else {
+                // 20% Peluang: Duplikasi/Pengulangan kata (Gagap)
+                let dup = words[target_idx].clone();
+                words.insert(target_idx, dup);
+            }
+        }
+    }
+    words.join(" ")
+}
 
 fn main() {
     let vocab_path = "experiment/file_model/vocab.json";
@@ -19,9 +61,12 @@ fn main() {
     let tokenizer = BPETokenizer::load(vocab_path);
 
     let vocab_size = tokenizer.vocab_size();
-    let d_model = 64; // Bisa disesuaikan
-    let max_seq_length = 32;
-    let batch_size = 8;
+    
+    // Hyperparameters (Metadata Pelatihan)
+    let d_model = 64;
+    let max_seq_length = 128; // Diubah sesuai permintaan
+    let num_pairs = 32;       // Mengikuti referensi train_wiki_unsupervised.ts
+    let batch_size = num_pairs * 2; // Total 64 kalimat per batch
 
     println!("Inisialisasi SpikingSentenceEmbedder (Vocab: {}, D_Model: {})...", vocab_size, d_model);
     let mut embedder = SpikingSentenceEmbedder::new(tokenizer, vocab_size, d_model, max_seq_length);
@@ -37,27 +82,18 @@ fn main() {
     let start_time = Instant::now();
     let mut last_log_time = Instant::now();
 
-    let num_pairs = batch_size / 2;
     let mut q_texts = Vec::new();
     let mut p_texts = Vec::new();
     
     while let Some(Ok(line)) = lines_iter.next() {
-        if line.trim().is_empty() { continue; }
+        let q_line = line.trim();
+        // Lewati kalimat kosong atau terlalu pendek seperti pada referensi
+        if q_line.is_empty() || q_line.len() < 50 { continue; }
         
-        let mut next_line = String::new();
-        let mut found_pair = false;
-        while let Some(Ok(l2)) = lines_iter.next() {
-            if !l2.trim().is_empty() {
-                next_line = l2;
-                found_pair = true;
-                break;
-            }
-        }
+        let p_line = corrupt_sentence(q_line);
         
-        if found_pair {
-            q_texts.push(line);
-            p_texts.push(next_line);
-        }
+        q_texts.push(q_line.to_string());
+        p_texts.push(p_line);
 
         if q_texts.len() == num_pairs {
             let mut batch_texts = Vec::new();
@@ -99,21 +135,32 @@ fn main() {
                 let elapsed_interval = last_log_time.elapsed();
                 let ms_per_batch = elapsed_interval.as_millis() as f64 / 10.0;
                 
-                println!(
-                    "[{:02}:{:02}:{:02}] Step: {:4} | Loss: {:>8.4} | Waktu: {:>6.2} ms/batch",
+                let max_steps = 1000;
+                let pct = step as f64 / max_steps as f64;
+                let bar_len = 20;
+                let filled = (pct * bar_len as f64) as usize;
+                let empty = bar_len - filled;
+                let bar = format!("{}{}{}", "=".repeat(filled), ">", " ".repeat(empty));
+
+                print!(
+                    "\r[{:02}:{:02}:{:02}] [{}] Step: {:4}/{} | Loss: {:>8.4} | {:>6.2} ms/batch  ",
                     elapsed_total.as_secs() / 3600,
                     (elapsed_total.as_secs() % 3600) / 60,
                     elapsed_total.as_secs() % 60,
+                    bar,
                     step,
+                    max_steps,
                     loss,
                     ms_per_batch
                 );
+                std::io::stdout().flush().unwrap();
                 
                 last_log_time = Instant::now();
             }
 
-            // Lakukan 1000 iterasi untuk pemanasan jaringan
+            // Lakukan iterasi untuk pemanasan jaringan
             if step >= 1000 {
+                println!(); // Pindah ke baris baru setelah selesai
                 break;
             }
         }
@@ -126,6 +173,10 @@ fn main() {
 fn save_model(embedder: &SpikingSentenceEmbedder, path: &str) {
     let mut model_data = serde_json::Map::new();
     
+    // 0. Simpan Hyperparameter
+    model_data.insert("d_model".to_string(), json!(embedder.attention.d_model));
+    model_data.insert("max_seq_length".to_string(), json!(embedder.max_seq_length));
+
     // 1. Simpan parameter Embedding
     let mut emb_params = serde_json::Map::new();
     for (name, data) in embedder.embedding.get_parameters() {
