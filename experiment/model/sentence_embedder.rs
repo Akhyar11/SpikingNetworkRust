@@ -55,7 +55,7 @@ impl SpikingSentenceEmbedder {
         );
 
         // 3. Temporal Pooling Layer (BPTT)
-        let pooler = SpikingDenseBPTT::new(
+        let mut pooler = SpikingDenseBPTT::new(
             config.d_model,
             config.d_model,
             false, // Disable recurrent bias
@@ -64,6 +64,14 @@ impl SpikingSentenceEmbedder {
             config.bptt_beta_range,
             config.bptt_threshold_range
         );
+        
+        // Inisialisasi bobot Temporal Pooler sebagai Identity Matrix
+        // agar bekerja murni sebagai Integrator murni.
+        for i in 0..config.d_model {
+            for j in 0..config.d_model {
+                pooler.kernel[i * config.d_model + j] = if i == j { 1.0 } else { 0.0 };
+            }
+        }
 
         Self {
             tokenizer,
@@ -81,6 +89,13 @@ impl SpikingSentenceEmbedder {
         for d in 0..self.embedding.output_dim {
             self.embedding.weights[d] = -1.0; // Paksa nilai negatif agar tidak pernah spike
         }
+    }
+
+    /// Update learning rate untuk scheduling dinamis (misalnya Linear Decay)
+    pub fn set_learning_rate(&mut self, lr: f32) {
+        self.embedding.base.learning_rate = lr;
+        self.attention.base.learning_rate = lr;
+        self.pooler.base.learning_rate = lr;
     }
 
     /// Forward pass mengonversi teks mentah menjadi representasi semantik ruang metrik (Metric Space)
@@ -124,10 +139,8 @@ impl SpikingSentenceEmbedder {
 
         for t in 0..self.max_seq_length {
             let mut step_input = vec![0.0; batch_size * self.pooler.in_features];
-            let mut has_valid = false;
             for b in 0..batch_size {
                 if t < actual_lengths[b] {
-                    has_valid = true;
                     let base_idx = (b * self.max_seq_length + t) * self.pooler.in_features;
                     for i in 0..self.pooler.in_features {
                         step_input[b * self.pooler.in_features + i] = aggregated_features[base_idx + i];
@@ -135,16 +148,14 @@ impl SpikingSentenceEmbedder {
                 }
             }
 
-            if has_valid {
-                self.pooler.compute_step(&step_input, t);
+            self.pooler.compute_step(&step_input, t);
 
-                for b in 0..batch_size {
-                    if t < actual_lengths[b] {
-                        let offset = b * self.pooler.units;
-                        for i in 0..self.pooler.units {
-                            // JS infer() accumulates historyPotentials
-                            final_embeddings[b][i] += self.pooler.history_potentials[t][offset + i];
-                        }
+            for b in 0..batch_size {
+                if t < actual_lengths[b] {
+                    let offset = b * self.pooler.units;
+                    for i in 0..self.pooler.units {
+                        // JS infer() accumulates historyPotentials
+                        final_embeddings[b][i] += self.pooler.history_potentials[t][offset + i];
                     }
                 }
             }
@@ -199,7 +210,7 @@ impl SpikingSentenceEmbedder {
         SpikingNetworkRust::core::contrastiveHebbian::contrastiveHebbian(
             &spikes1, &mut err_emb_data, num_pairs, self.max_seq_length, d_model, margin
         );
-        self.embedding.backward(&err_emb_data);
+        self.embedding.backward(&err_emb_data, None);
 
         // LAYER 2: ATTENTION
         let att_spikes = self.attention.forward(&spikes1, &actual_lengths);
@@ -221,10 +232,8 @@ impl SpikingSentenceEmbedder {
 
         for t in 0..self.max_seq_length {
             let mut step_input = vec![0.0; batch_size * self.pooler.in_features];
-            let mut has_valid = false;
             for b in 0..batch_size {
                 if t < actual_lengths[b] {
-                    has_valid = true;
                     let base_idx = (b * self.max_seq_length + t) * self.pooler.in_features;
                     for i in 0..self.pooler.in_features {
                         step_input[b * self.pooler.in_features + i] = spikes2[base_idx + i];

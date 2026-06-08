@@ -43,8 +43,31 @@ fn apply_weights(embedder: &mut SpikingSentenceEmbedder, model_data: &serde_json
     load_layer(&mut embedder.pooler, "pooler");
 }
 
-fn cosine_similarity(v1: &[f32], v2: &[f32]) -> f32 {
-    v1.iter().zip(v2.iter()).map(|(a, b)| a * b).sum()
+fn cosine_similarity(vec1: &[f32], vec2: &[f32]) -> f32 {
+    let mut mean1 = 0.0;
+    let mut mean2 = 0.0;
+    for i in 0..vec1.len() {
+        mean1 += vec1[i];
+        mean2 += vec2[i];
+    }
+    mean1 /= vec1.len() as f32;
+    mean2 /= vec2.len() as f32;
+
+    let mut dot = 0.0;
+    let mut norm1 = 0.0;
+    let mut norm2 = 0.0;
+    for i in 0..vec1.len() {
+        let val1 = vec1[i] - mean1;
+        let val2 = vec2[i] - mean2;
+        dot += val1 * val2;
+        norm1 += val1 * val1;
+        norm2 += val2 * val2;
+    }
+    if norm1 == 0.0 || norm2 == 0.0 {
+        return 0.0;
+    }
+    let sim = dot / (norm1.sqrt() * norm2.sqrt());
+    sim.max(0.0) // Hindari persentase negatif
 }
 
 fn pearson_correlation(x: &[f32], y: &[f32]) -> f32 {

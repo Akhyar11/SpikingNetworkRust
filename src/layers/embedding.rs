@@ -143,9 +143,25 @@ impl SpikingEmbedding {
 
     /// Backward pass:
     /// `error_signal`: Matriks gradien dari layer selanjutnya (shape: `[batch_size, output_dim]`)
-    pub fn backward(&mut self, error_signal: &[f32]) {
+    pub fn backward(&mut self, error_signal: &[f32], b_matrix: Option<&[f32]>) {
         if let Some(inputs) = &self.cached_inputs {
-            let mut masked_err = error_signal.to_vec();
+            let mut e_hidden = vec![0.0; error_signal.len()];
+            if let Some(b_mat) = b_matrix {
+                let batch_seq = error_signal.len() / self.output_dim;
+                for i in 0..batch_seq {
+                    for j in 0..self.output_dim {
+                        let mut sum = 0.0;
+                        for k in 0..self.output_dim {
+                            sum += error_signal[i * self.output_dim + k] * b_mat[k * self.output_dim + j];
+                        }
+                        e_hidden[i * self.output_dim + j] = sum;
+                    }
+                }
+            } else {
+                e_hidden.copy_from_slice(error_signal);
+            }
+
+            let mut masked_err = e_hidden.to_vec();
             crate::core::surrogate::maskSurrogate(&mut masked_err, &self.last_potentials, &self.threshold, 1.0);
             
             // Kita panggil fungsi applyEmbeddingDelta murni dari core

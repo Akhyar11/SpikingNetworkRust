@@ -95,11 +95,10 @@ impl BPETokenizer {
     pub fn decode(&self, ids: &[u32]) -> String {
         let mut tokens = Vec::new();
         for &id in ids {
-            if let Some(token) = self.reverse_vocab.get(&id) {
-                if token != BOS_TOKEN && token != EOS_TOKEN && token != PAD_TOKEN {
+            if let Some(token) = self.reverse_vocab.get(&id)
+                && token != BOS_TOKEN && token != EOS_TOKEN && token != PAD_TOKEN {
                     tokens.push(token.clone());
                 }
-            }
         }
         let joined = tokens.join("");
         joined.replace(WORD_BOUNDARY, " ").trim().to_string()
@@ -150,9 +149,8 @@ impl BPETokenizer {
     }
 
     fn create_initial_symbols(&self, token: &str) -> Vec<String> {
-        if token.starts_with(WORD_BOUNDARY) {
+        if let Some(body) = token.strip_prefix(WORD_BOUNDARY) {
             let mut syms = vec![WORD_BOUNDARY.to_string()];
-            let body = &token[WORD_BOUNDARY.len()..];
             for c in body.chars() {
                 syms.push(c.to_string());
             }
@@ -169,12 +167,11 @@ impl BPETokenizer {
 
             for i in 0..symbols.len() - 1 {
                 let pair_key = format!("{}{}{}", symbols[i], PAIR_SEPARATOR, symbols[i + 1]);
-                if let Some(&rank) = self.merge_ranks.get(&pair_key) {
-                    if rank < best_rank {
+                if let Some(&rank) = self.merge_ranks.get(&pair_key)
+                    && rank < best_rank {
                         best_rank = rank;
                         best_index = Some(i);
                     }
-                }
             }
 
             if let Some(i) = best_index {

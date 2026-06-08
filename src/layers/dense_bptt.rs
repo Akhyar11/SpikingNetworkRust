@@ -36,7 +36,7 @@ impl SpikingDenseBPTT {
         use_bias: bool, 
         clip_min: f32, 
         clip_max: f32,
-        beta_range: (f32, f32),
+        _beta_range: (f32, f32),
         threshold_range: (f32, f32)
     ) -> Self {
         let mut rng = rand::thread_rng();

@@ -3,7 +3,7 @@ pub mod sentence_embedder;
 
 use SpikingNetworkRust::core::bpe::BPETokenizer;
 use SpikingNetworkRust::layers::base::Layer;
-use SpikingNetworkRust::core::contrastiveHebbian::contrastiveHebbian;
+
 use sentence_embedder::SpikingSentenceEmbedder;
 use rand::Rng;
 use serde_json::json;
@@ -54,7 +54,7 @@ fn corrupt_sentence(sentence: &str) -> String {
 
 fn main() {
     let vocab_path = "experiment/file_model/vocab.json";
-    let corpus_path = "experiment/file_model/mini_corpus20mb.txt";
+    let corpus_path = "/home/akhyar/Dokumen/Code/NODE_JS/penelitian_model_bahasa_dengan_spiking/dataset/mini_corpus.txt";
     let model_save_path = "experiment/file_model/saved_model.json";
 
     println!("Memuat tokenizer dari {}...", vocab_path);
@@ -66,7 +66,7 @@ fn main() {
     let d_model = 64;
     let max_seq_length = 32; // Diubah sesuai permintaan
     let num_pairs = 32;       // Mengikuti referensi train_wiki_unsupervised.ts
-    let batch_size = num_pairs * 2; // Total 64 kalimat per batch
+    let _batch_size = num_pairs * 2; // Total 64 kalimat per batch
     let num_epochs = 1;
 
     // SNN Hyperparameters diletakkan di sini sesuai permintaan
@@ -76,10 +76,10 @@ fn main() {
         learning_rate: 0.01,
         clip_min: -1.0,
         clip_max: 1.0,
-        att_beta_range: (0.8, 0.9),
+        att_beta_range: (0.8, 0.99),
         att_threshold_range: (0.1, 0.3),
-        bptt_beta_range: (0.8, 0.9),
-        bptt_threshold_range: (0.1, 0.5),
+        bptt_beta_range: (0.5, 0.99),
+        bptt_threshold_range: (0.5, 1.0),
     };
     
     let margin = 0.2; // Margin untuk Contrastive Hebbian Loss
@@ -101,43 +101,57 @@ fn main() {
             }
         }
     }
+    let mut all_lines = Vec::new();
+    let file = File::open(corpus_path).expect("Gagal membuka corpus.");
+    let reader = BufReader::new(file);
+    for line in reader.lines() {
+        if let Ok(l) = line {
+            let trim = l.trim();
+            if !trim.is_empty() && trim.len() >= 31 {
+                all_lines.push(trim.to_string());
+            }
+        }
+    }
+    let valid_lines_count = all_lines.len();
     let max_steps_per_epoch = if valid_lines_count > 0 { valid_lines_count / num_pairs } else { 1 };
     println!("Total kalimat valid: {}, Estimasi {} step per epoch", valid_lines_count, max_steps_per_epoch);
 
+    use rand::seq::SliceRandom;
+    let mut rng = rand::thread_rng();
+
     for epoch in 1..=num_epochs {
-        let mut step = 0; // Reset step counter per epoch
-        let mut start_time = Instant::now();
+        let mut step = 0;
+        let start_time = Instant::now();
         let mut last_log_time = Instant::now();
-        let file = File::open(corpus_path).expect("Gagal membuka corpus.");
-        let reader = BufReader::new(file);
-        let mut lines_iter = reader.lines();
+        
+        all_lines.shuffle(&mut rng);
         
         let mut q_texts = Vec::new();
         let mut p_texts = Vec::new();
         
-        while let Some(Ok(line)) = lines_iter.next() {
-        let q_line = line.trim();
-        // Lewati kalimat kosong atau terlalu pendek seperti pada referensi
-        if q_line.is_empty() || q_line.len() < 31 { continue; }
-        
-        let p_line = corrupt_sentence(q_line);
-        
-        q_texts.push(q_line.to_string());
-        p_texts.push(p_line);
+        for q_line in &all_lines {
+            let p_line = corrupt_sentence(q_line);
+            
+            q_texts.push(q_line.clone());
+            p_texts.push(p_line);
 
-        if q_texts.len() == num_pairs {
-            let mut batch_texts = Vec::new();
-            for q in &q_texts { batch_texts.push(q.as_str()); }
-            for p in &p_texts { batch_texts.push(p.as_str()); }
+            if q_texts.len() == num_pairs {
+                let mut batch_texts = Vec::new();
+                for q in &q_texts { batch_texts.push(q.as_str()); }
+                for p in &p_texts { batch_texts.push(p.as_str()); }
 
-            let loss = embedder.train_step(&batch_texts, num_pairs, margin);
+                let current_lr = 0.01 * f32::max(0.01, 1.0 - (step as f32 / max_steps_per_epoch as f32));
+                embedder.set_learning_rate(current_lr);
 
-            q_texts.clear();
-            p_texts.clear();
-            step += 1;
+                let loss = embedder.train_step(&batch_texts, num_pairs, margin);
 
-            if step % 10 == 0 {
-                let elapsed_total = start_time.elapsed();
+                q_texts.clear();
+                p_texts.clear();
+                step += 1;
+
+                if step % 10 == 0 {
+                    let elapsed_total = start_time.elapsed();
+
                 let elapsed_interval = last_log_time.elapsed();
                 let ms_per_batch = elapsed_interval.as_millis() as f64 / 10.0;
                 let pct = (step as f64 / max_steps_per_epoch as f64).min(1.0);
@@ -162,9 +176,9 @@ fn main() {
                 std::io::stdout().flush().unwrap();
                 
                 last_log_time = Instant::now();
+                }
             }
         }
-        } // Tutup while let loop
         println!("\nEpoch {} selesai!", epoch);
     }
 

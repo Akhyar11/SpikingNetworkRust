@@ -1,4 +1,3 @@
-use rayon::prelude::*;
 
 /// Kalkulasi Fungsi Loss "In-Batch Negative Contrastive" khusus SNN.
 /// Menarik vektor Q ke arah Positif (P) dan menjauhkannya dari Negatif (N).
@@ -26,56 +25,31 @@ pub fn contrastiveHebbian(
         let neg_idx = (i + 1) % num_pairs;
         let n_offset = (num_pairs + neg_idx) * sequence_length * d_model;
 
-        // 1. Hitung Dot Product
-        let mut dot_qp = 0.0;
-        let mut dot_qn = 0.0;
         for s in 0..sequence_length {
             for d in 0..d_model {
-                let q_s = spikes[q_offset + s * d_model + d];
-                let p_s = spikes[p_offset + s * d_model + d];
-                let n_s = spikes[n_offset + s * d_model + d];
-                dot_qp += q_s * p_s;
-                dot_qn += q_s * n_s;
-            }
-        }
+                let idx_q = q_offset + s * d_model + d;
+                let idx_p = p_offset + s * d_model + d;
+                let idx_n = n_offset + s * d_model + d;
 
-        // 2. Hitung Loss Margin
-        let loss = (dot_qn - dot_qp + margin).max(0.0);
-        total_loss += loss;
+                let q_s = spikes[idx_q];
+                let p_s = spikes[idx_p];
+                let n_s = spikes[idx_n];
 
-        // 3. Backpropagate jika loss aktif
-        if loss > 0.0 {
-            for s in 0..sequence_length {
-                for d in 0..d_model {
-                    let idx_q = q_offset + s * d_model + d;
-                    let idx_p = p_offset + s * d_model + d;
-                    let idx_n = n_offset + s * d_model + d;
+                let mut pull = p_s - q_s;
+                // Suntik energi agar hidup jika kolaps total (semua mati)
+                if q_s == 0.0 && p_s == 0.0 && n_s == 0.0 {
+                    pull = 0.05;
+                }
+                
+                // Daya Tolak (Repulsion): N menolak Q (hanya menolak jika keduanya spike)
+                // Di sini kita pakai margin sebagai pengganti `0.2` hardcode di JS.
+                let push = q_s * n_s * margin; 
 
-                    let q_s = spikes[idx_q];
-                    let p_s = spikes[idx_p];
-                    let n_s = spikes[idx_n];
-
-                    // Gradient:
-                    // dL/dq = n - p  => -dL/dq = p - n
-                    // dL/dp = -q     => -dL/dp = q
-                    // dL/dn = q      => -dL/dn = -q
-                    
-                    let mut grad_q = p_s - n_s;
-                    let mut grad_p = q_s;
-                    let mut grad_n = -q_s;
-
-                    // SYMMETRY BREAKING: Jika embeddings kolaps (identik), berikan dorongan acak deterministik
-                    // agar tidak stuck di gradien nol.
-                    if grad_q.abs() < 1e-5 && (q_s - p_s).abs() < 1e-5 {
-                        let noise = if (d + i) % 2 == 0 { 0.05 } else { -0.05 };
-                        grad_q = noise;
-                        grad_p = noise;
-                        grad_n = -noise;
-                    }
-                    
-                    err_data[idx_q] += grad_q;
-                    err_data[idx_p] += grad_p;
-                    err_data[idx_n] += grad_n; 
+                if pull != 0.0 || push != 0.0 {
+                    err_data[idx_q] += pull - push; // Q ditarik ke P, didorong oleh N
+                    err_data[idx_p] += -pull;       // P ditarik ke Q
+                    err_data[idx_n] += -push;       // N didorong oleh Q
+                    total_loss += pull.abs() + push;
                 }
             }
         }
