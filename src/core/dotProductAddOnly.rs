@@ -1,4 +1,4 @@
-use ndarray::{Array2, Axis};
+use ndarray::{Array2, ArrayView2, Axis};
 use rayon::prelude::*;
 
 /// Operasi perkalian titik khusus untuk Spiking Neural Network (SNN).
@@ -7,7 +7,7 @@ use rayon::prelude::*;
 /// 
 /// Jika input spike == 1.0, kita cukup menambahkan bobotnya (Add-Only).
 /// Jika input spike == 0.0, kita abaikan.
-pub fn dot_product_add_only(inputs: &Array2<f32>, weights: &Array2<f32>) -> Array2<f32> {
+pub fn dot_product_add_only(inputs: &ArrayView2<f32>, weights: &ArrayView2<f32>) -> Array2<f32> {
     let (batch_size, input_dim) = (inputs.nrows(), inputs.ncols());
     let output_dim = weights.ncols();
     
