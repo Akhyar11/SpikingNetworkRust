@@ -29,12 +29,12 @@ pub fn lifStep(
             let b = if beta.len() == 1 { beta[0] } else { beta[i % beta.len()] };
             let t = if threshold.len() == 1 { threshold[0] } else { threshold[i % threshold.len()] };
 
-            let current_p = (*p * b) + d;
+            let current_p = f32::min(1.0, (*p * b) + d);
             
             // Simpan potensi sesaat (sebelum direset) untuk keperluan Surrogate Gradient
             *lp = current_p;
 
-            if current_p > t {
+            if current_p >= t {
                 *s = 1.0;
                 *p = current_p - t; // Soft reset (mencegah information loss)
             } else {

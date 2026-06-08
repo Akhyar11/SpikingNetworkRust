@@ -1,13 +1,8 @@
 use ndarray::{Array2, ArrayView2, Axis};
 use rayon::prelude::*;
 
-/// Operasi perkalian titik khusus untuk Spiking Neural Network (SNN).
-/// Karena pada SNN input mayoritas adalah biner (1.0 atau 0.0), kita dapat menghindari
-/// operasi perkalian (floating-point multiplication) yang mahal.
-/// 
-/// Jika input spike == 1.0, kita cukup menambahkan bobotnya (Add-Only).
-/// Jika input spike == 0.0, kita abaikan.
-pub fn dot_product_add_only(inputs: &ArrayView2<f32>, weights: &ArrayView2<f32>) -> Array2<f32> {
+/// Operasi perkalian titik penuh (Full Dot Product) untuk continuous/analog inputs.
+pub fn dot_product(inputs: &ArrayView2<f32>, weights: &ArrayView2<f32>) -> Array2<f32> {
     let (batch_size, input_dim) = (inputs.nrows(), inputs.ncols());
     let output_dim = weights.ncols();
     
@@ -22,13 +17,14 @@ pub fn dot_product_add_only(inputs: &ArrayView2<f32>, weights: &ArrayView2<f32>)
         .for_each(|(b, mut out_row)| {
             let input_row = inputs.row(b);
             
-            // Loop khusus fitur Add-Only
+            // Lakukan perkalian titik (dot product) penuh untuk mendukung continuous input (analog current)
             for in_d in 0..input_dim {
-                // Input SNN biner (0.0 atau 1.0) dari SpikingSelfAttention
-                if input_row[in_d] > 0.0 {
+                let in_val = input_row[in_d];
+                // Abaikan nol persis untuk optimasi sparsity
+                if in_val != 0.0 {
                     let weight_row = weights.row(in_d);
                     for out_d in 0..output_dim {
-                        out_row[out_d] += weight_row[out_d];
+                        out_row[out_d] += in_val * weight_row[out_d];
                     }
                 }
             }

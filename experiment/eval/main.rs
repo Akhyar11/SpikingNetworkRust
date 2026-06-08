@@ -29,7 +29,7 @@ fn load_model(path: &str) -> (serde_json::Value, usize, usize) {
 }
 
 fn apply_weights(embedder: &mut SpikingSentenceEmbedder, model_data: &serde_json::Value) {
-    let mut load_layer = |layer: &mut dyn Layer, group: &str| {
+    let load_layer = |layer: &mut dyn Layer, group: &str| {
         if let Some(obj) = model_data.get(group).and_then(|v| v.as_object()) {
             for (k, v) in obj {
                 let data: Vec<f32> = serde_json::from_value(v.clone()).unwrap();

@@ -2,7 +2,7 @@ use ndarray::ArrayView2;
 use rand::Rng;
 
 use crate::layers::base::{BaseLayer, Layer};
-use crate::core::dotProductAddOnly::dot_product_add_only;
+use crate::core::dotProduct::dot_product;
 use crate::core::lifStep::lifStep;
 
 pub struct SpikingSelfAttention {
@@ -20,6 +20,10 @@ pub struct SpikingSelfAttention {
     pub potentials_q: Vec<f32>,
     pub potentials_k: Vec<f32>,
     pub potentials_v: Vec<f32>,
+    
+    pub beta_scores: Vec<f32>,
+    pub threshold_scores: Vec<f32>,
+    pub potentials_scores: Vec<f32>,
 
     pub last_inputs: Option<Vec<f32>>,
 }
@@ -56,6 +60,13 @@ impl SpikingSelfAttention {
             threshold_qkv[i] = rng.gen_range(threshold_range.0 .. threshold_range.1);
         }
 
+        let mut beta_scores = vec![0.0; sequence_length];
+        let mut threshold_scores = vec![0.0; sequence_length];
+        for i in 0..sequence_length {
+            beta_scores[i] = 0.9;
+            threshold_scores[i] = 1.0;
+        }
+
         Self {
             d_model,
             sequence_length,
@@ -68,6 +79,9 @@ impl SpikingSelfAttention {
             potentials_q: Vec::new(),
             potentials_k: Vec::new(),
             potentials_v: Vec::new(),
+            beta_scores,
+            threshold_scores,
+            potentials_scores: Vec::new(),
             last_inputs: None,
         }
     }
@@ -77,6 +91,7 @@ impl SpikingSelfAttention {
         self.potentials_q = vec![0.0; size];
         self.potentials_k = vec![0.0; size];
         self.potentials_v = vec![0.0; size];
+        self.potentials_scores = vec![0.0; batch_size * self.sequence_length * self.sequence_length];
     }
 
     /// Linear Attention: Q * (K^T * V) untuk mengatasi O(N^2)
@@ -99,9 +114,9 @@ impl SpikingSelfAttention {
         let kk_arr = ArrayView2::from_shape((self.d_model, self.d_model), &self.kernel_k).unwrap();
         let kv_arr = ArrayView2::from_shape((self.d_model, self.d_model), &self.kernel_v).unwrap();
 
-        let dot_q = dot_product_add_only(&inputs_arr, &kq_arr);
-        let dot_k = dot_product_add_only(&inputs_arr, &kk_arr);
-        let dot_v = dot_product_add_only(&inputs_arr, &kv_arr);
+        let dot_q = dot_product(&inputs_arr, &kq_arr);
+        let dot_k = dot_product(&inputs_arr, &kk_arr);
+        let dot_v = dot_product(&inputs_arr, &kv_arr);
 
         // 2. Evaluasi Potensial Membran dan Ekstrak Spike (S_Q, S_K, S_V)
         let mut sq = vec![0.0; batch_seq * self.d_model];
@@ -113,55 +128,83 @@ impl SpikingSelfAttention {
         lifStep(&mut self.potentials_k, dot_k.as_slice().unwrap(), &mut sk, &mut dummy, &self.beta_qkv, &self.threshold_qkv);
         lifStep(&mut self.potentials_v, dot_v.as_slice().unwrap(), &mut sv, &mut dummy, &self.beta_qkv, &self.threshold_qkv);
 
-        let mut out_data = vec![0.0; batch_seq * self.d_model];
+        let _out_data = vec![0.0; batch_seq * self.d_model];
 
-        // 3. Linear Attention (Menghitung pola atensi tanpa matrik memori inter-neuron raksasa N x N)
+        // 3. Menghitung Skor Kecocokan (SQ dot SK^T) menggunakan bit-wise addition O(N^2)
+        let mut match_scores = vec![0.0; batch * self.sequence_length * self.sequence_length];
+        
         for b in 0..batch {
-            let mut kv_matrix = vec![0.0; self.d_model * self.d_model];
-
-            // A: K^T * V
-            let len_f32 = if actual_lengths[b] == 0 { 1.0 } else { actual_lengths[b] as f32 };
             for i in 0..self.sequence_length {
                 if i >= actual_lengths[b] { continue; }
-                let base_idx = (b * self.sequence_length + i) * self.d_model;
-                let mut non_zero_k = Vec::with_capacity(self.d_model);
-                let mut non_zero_v = Vec::with_capacity(self.d_model);
+                let q_base = b * self.sequence_length * self.d_model + i * self.d_model;
                 
+                let mut non_zero_q = Vec::with_capacity(self.d_model);
                 for d in 0..self.d_model {
-                    if sk[base_idx + d] > 0.0 { non_zero_k.push(d); }
-                    if sv[base_idx + d] > 0.0 { non_zero_v.push(d); }
+                    if sq[q_base + d] > 0.0 { non_zero_q.push(d); }
                 }
+                if non_zero_q.is_empty() { continue; }
 
-                for &d1 in &non_zero_k {
-                    for &d2 in &non_zero_v {
-                        kv_matrix[d1 * self.d_model + d2] += 1.0 / len_f32;
+                let mut max_match = 0;
+                let mut temp_matches = vec![0; self.sequence_length];
+                
+                for j in 0..self.sequence_length {
+                    if j >= actual_lengths[b] { continue; }
+                    let mut match_count = 0;
+                    let k_base = b * self.sequence_length * self.d_model + j * self.d_model;
+                    for &d in &non_zero_q {
+                        if sk[k_base + d] > 0.0 { match_count += 1; }
+                    }
+                    temp_matches[j] = match_count;
+                    if match_count > max_match {
+                        max_match = match_count;
+                    }
+                }
+                
+                for j in 0..self.sequence_length {
+                    let score_idx = b * self.sequence_length * self.sequence_length + i * self.sequence_length + j;
+                    if max_match > 0 {
+                        match_scores[score_idx] = temp_matches[j] as f32 / max_match as f32;
+                    } else {
+                        match_scores[score_idx] = 0.0;
                     }
                 }
             }
+        }
 
-            // B: Q * (K^T * V)
-            for i in 0..self.sequence_length {
-                if i >= actual_lengths[b] { continue; }
-                let base_idx = (b * self.sequence_length + i) * self.d_model;
-                let mut non_zero_q = Vec::with_capacity(self.d_model);
+        // 4. Pengganti Softmax: Lewatkan skor kecocokan ke lapisan LIF
+        let mut s_scores_data = vec![0.0; batch * self.sequence_length * self.sequence_length];
+        let mut dummy_lp_scores = vec![0.0; batch * self.sequence_length * self.sequence_length];
+        lifStep(&mut self.potentials_scores, &match_scores, &mut s_scores_data, &mut dummy_lp_scores, &self.beta_scores, &self.threshold_scores);
+
+        let mut out_data = vec![0.0; batch_seq * self.d_model];
+
+        for b in 0..batch {
+            for j in 0..self.sequence_length {
+                if j >= actual_lengths[b] { continue; }
+                let v_base = b * self.sequence_length * self.d_model + j * self.d_model;
+                let mut non_zero_v = Vec::with_capacity(self.d_model);
                 for d in 0..self.d_model {
-                    if sq[base_idx + d] > 0.0 { non_zero_q.push(d); }
+                    if sv[v_base + d] > 0.0 { non_zero_v.push(d); }
                 }
+                if non_zero_v.is_empty() { continue; }
 
-                for &d1 in &non_zero_q {
-                    for d2 in 0..self.d_model {
-                        let val = kv_matrix[d1 * self.d_model + d2];
-                        if val > 0.0 {
-                            out_data[base_idx + d2] += val;
+                for i in 0..self.sequence_length {
+                    if i >= actual_lengths[b] { continue; }
+                    let score_idx = b * self.sequence_length * self.sequence_length + i * self.sequence_length + j;
+                    let graded_score = match_scores[score_idx];
+                    if graded_score > 0.0 {
+                        let out_base = b * self.sequence_length * self.d_model + i * self.d_model;
+                        for &d in &non_zero_v {
+                            out_data[out_base + d] += graded_score * sv[v_base + d];
                         }
                     }
                 }
             }
         }
 
-        // Clip / Binarize
+        // Opsional: Batasi output menjadi biner (spike) jika layer berikutnya menuntut binary matrix (sesuai JS)
         for x in out_data.iter_mut() {
-            if *x > 1.0 { *x = 1.0; }
+            if *x > 0.0 { *x = 1.0; } else { *x = 0.0; }
         }
 
         out_data
@@ -169,7 +212,7 @@ impl SpikingSelfAttention {
 
     pub fn learn_attention(&mut self, error_signal: &[f32], actual_lengths: &[usize]) {
         let inputs = self.last_inputs.as_ref().expect("Panggil forward() dulu!");
-        let batch_seq = inputs.len() / self.d_model;
+        let _batch_seq = inputs.len() / self.d_model;
         let batch_size = actual_lengths.len();
         let lr = self.base.learning_rate;
         let clip_min = self.base.clip_min;

@@ -2,6 +2,8 @@ pub mod bpe;
 #[allow(non_snake_case)]
 pub mod dotProductAddOnly;
 #[allow(non_snake_case)]
+pub mod dotProduct;
+#[allow(non_snake_case)]
 pub mod lifStep;
 #[allow(non_snake_case)]
 pub mod contrastiveHebbian;

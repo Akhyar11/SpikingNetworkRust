@@ -10,8 +10,14 @@ pub struct SpikingEmbedding {
     pub weights: Vec<f32>,
     pub base: BaseLayer,
     
+    pub beta: Vec<f32>,
+    pub threshold: Vec<f32>,
+    pub potentials: Vec<f32>,
+    pub last_potentials: Vec<f32>,
+    pub last_spikes: Option<Vec<f32>>,
+    
     // Cache array ID token untuk backpropagation
-    cached_inputs: Option<Vec<f32>>,
+    pub cached_inputs: Option<Vec<f32>>,
 }
 
 impl SpikingEmbedding {
@@ -19,9 +25,17 @@ impl SpikingEmbedding {
         let mut rng = rand::thread_rng();
         // Xavier/Glorot Initialization
         let limit = (6.0 / (input_dim as f32 + output_dim as f32)).sqrt();
+        let scale_factor = (input_dim as f32).sqrt(); // Skalakan seperti di TypeScript
         let mut weights = vec![0.0; input_dim * output_dim];
         for w in weights.iter_mut() {
-            *w = rng.gen_range(-limit..limit);
+            *w = rng.gen_range(-limit..limit) * scale_factor;
+        }
+
+        let mut beta = vec![0.0; output_dim];
+        let mut threshold = vec![0.0; output_dim];
+        for i in 0..output_dim {
+            beta[i] = rng.gen_range(0.8..0.99);
+            threshold[i] = rng.gen_range(0.01..0.1);
         }
 
         Self {
@@ -29,6 +43,11 @@ impl SpikingEmbedding {
             output_dim,
             weights,
             base: BaseLayer::new("SpikingEmbedding", learning_rate, clip_min, clip_max),
+            beta,
+            threshold,
+            potentials: Vec::new(),
+            last_potentials: Vec::new(),
+            last_spikes: None,
             cached_inputs: None,
         }
     }
@@ -74,28 +93,43 @@ impl SpikingEmbedding {
     /// Mengembalikan flat matrix spikes dengan bentuk `[batch_size, output_dim]`.
     pub fn forward(&mut self, inputs: &[f32]) -> Vec<f32> {
         let batch_size = inputs.len();
-        let mut output_spikes = vec![0.0; batch_size * self.output_dim];
+        
+        // Ensure potentials buffer shape
+        let required_size = batch_size * self.output_dim;
+        if self.potentials.len() != required_size {
+            self.potentials = vec![0.0; required_size];
+            self.last_potentials = vec![0.0; required_size];
+        }
+
+        let mut dot_data = vec![0.0; required_size];
 
         // Simpan input untuk backward pass
         self.cached_inputs = Some(inputs.to_vec());
 
-        output_spikes.par_chunks_mut(self.output_dim)
+        dot_data.par_chunks_mut(self.output_dim)
             .enumerate()
             .for_each(|(b, out_row)| {
                 let token_id = inputs[b] as i32;
-                // Hanya proses jika Token ID valid (melewati <PAD> yang biasanya = 1 atau <=0)
                 if token_id > 0 && token_id < self.input_dim as i32 {
                     let w_offset = (token_id as usize) * self.output_dim;
                     for d in 0..self.output_dim {
-                        let weight_val = self.weights[w_offset + d];
-                        // ==========================================
-                        // STATELESS BINARIZATION (Heaviside Step)
-                        // Bobot positif = Spike (1.0), Negatif = Mati (0.0)
-                        // ==========================================
-                        out_row[d] = if weight_val > 0.0 { 1.0 } else { 0.0 };
+                        out_row[d] = self.weights[w_offset + d];
                     }
                 }
             });
+
+        let mut output_spikes = vec![0.0; required_size];
+        
+        crate::core::lifStep::lifStep(
+            &mut self.potentials,
+            &dot_data,
+            &mut output_spikes,
+            &mut self.last_potentials,
+            &self.beta,
+            &self.threshold
+        );
+        
+        self.last_spikes = Some(output_spikes.clone());
 
         output_spikes
     }
@@ -104,11 +138,14 @@ impl SpikingEmbedding {
     /// `error_signal`: Matriks gradien dari layer selanjutnya (shape: `[batch_size, output_dim]`)
     pub fn backward(&mut self, error_signal: &[f32]) {
         if let Some(inputs) = &self.cached_inputs {
+            let mut masked_err = error_signal.to_vec();
+            crate::core::surrogate::maskSurrogate(&mut masked_err, &self.last_potentials, &self.threshold, 1.0);
+            
             // Kita panggil fungsi applyEmbeddingDelta murni dari core
             applyEmbeddingDelta(
                 &mut self.weights,
-                self.cached_inputs.as_ref().unwrap(),
-                error_signal,
+                inputs,
+                &masked_err,
                 self.base.learning_rate,
                 self.input_dim,
                 self.output_dim,
