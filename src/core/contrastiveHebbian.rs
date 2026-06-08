@@ -32,16 +32,26 @@ pub fn contrastiveHebbian(
                 let p_spike = spikes[idx_p];
                 let n_spike = spikes[idx_n];
 
-                let mut pull = p_spike - q_spike;
-                // Suntik energi kecil jika terjadi "mati" semua
+                let mut err_q = p_spike - q_spike;
+                let mut err_p = q_spike - p_spike;
+                
+                // Suntik energi kecil jika terjadi "mati" semua agar bangun
                 if q_spike == 0.0 && p_spike == 0.0 && n_spike == 0.0 {
-                    pull = 0.05;
+                    err_q = 0.05;
+                    err_p = 0.05;
                 }
 
-                let push = (q_spike * n_spike) * 0.2;
+                // Repulsi (tolak) Q dan N jika mereka tumpang tindih
+                let push_force = (q_spike * n_spike) * 0.2;
+                let mut repulse_q = (q_spike - n_spike) * push_force;
+                
+                // Symmetry breaking jika mereka identik
+                if q_spike == n_spike && q_spike > 0.0 {
+                    repulse_q = 0.01;
+                }
 
-                if pull != 0.0 || push != 0.0 {
-                    local_loss += pull.abs() + push;
+                if err_q != 0.0 || err_p != 0.0 || repulse_q != 0.0 {
+                    local_loss += err_q.abs() + repulse_q.abs();
                 }
             }
         }
@@ -68,16 +78,26 @@ pub fn contrastiveHebbian(
                 let p_spike = spikes[idx_p];
                 let n_spike = spikes[idx_n];
 
-                let mut pull = p_spike - q_spike;
+                let mut err_q = p_spike - q_spike;
+                let mut err_p = q_spike - p_spike;
+                
                 if q_spike == 0.0 && p_spike == 0.0 && n_spike == 0.0 {
-                    pull = 0.05;
+                    err_q = 0.05;
+                    err_p = 0.05;
                 }
-                let push = (q_spike * n_spike) * 0.2;
+                let push_force = (q_spike * n_spike) * 0.2;
+                let mut repulse_q = (q_spike - n_spike) * push_force;
+                let mut repulse_n = (n_spike - q_spike) * push_force;
+                
+                if q_spike == n_spike && q_spike > 0.0 {
+                    repulse_q = 0.01;
+                    repulse_n = -0.01;
+                }
 
-                if pull != 0.0 || push != 0.0 {
-                    err_data[idx_q] += pull - push;
-                    err_data[idx_p] += -pull;
-                    err_data[idx_n] += -push;
+                if err_q != 0.0 || err_p != 0.0 || repulse_q != 0.0 {
+                    err_data[idx_q] += err_q + repulse_q;
+                    err_data[idx_p] += err_p;
+                    err_data[idx_n] += repulse_n;
                 }
             }
         }

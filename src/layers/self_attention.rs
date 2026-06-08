@@ -167,35 +167,41 @@ impl SpikingSelfAttention {
         out_data
     }
 
-    pub fn learn_attention(&mut self, error_signal: &[f32]) {
+    pub fn learn_attention(&mut self, error_signal: &[f32], actual_lengths: &[usize]) {
         let inputs = self.last_inputs.as_ref().expect("Panggil forward() dulu!");
         let batch_seq = inputs.len() / self.d_model;
+        let batch_size = actual_lengths.len();
         let lr = self.base.learning_rate;
         let clip_min = self.base.clip_min;
         let clip_max = self.base.clip_max;
 
-        for b in 0..batch_seq {
-            let offset = b * self.d_model;
-            for i in 0..self.d_model {
-                let in_val = inputs[offset + i];
-                if in_val > 0.0 {
-                    let k_offset = i * self.d_model;
-                    for d in 0..self.d_model {
-                        // Residu dopamin agar dead neuron tetap hidup kembali secara bertahap
-                        let dopamine = 0.00005;
-                        let delta = (lr * error_signal[offset + d] * in_val) + dopamine;
-                        
-                        let mut nq = self.kernel_q[k_offset + d] + delta;
-                        if nq > clip_max { nq = clip_max; } else if nq < clip_min { nq = clip_min; }
-                        self.kernel_q[k_offset + d] = nq;
+        for b in 0..batch_size {
+            for t in 0..self.sequence_length {
+                if t >= actual_lengths[b] { continue; }
+                
+                let b_seq = b * self.sequence_length + t;
+                let offset = b_seq * self.d_model;
+                for i in 0..self.d_model {
+                    let in_val = inputs[offset + i];
+                    if in_val > 0.0 {
+                        let k_offset = i * self.d_model;
+                        for d in 0..self.d_model {
+                            // Residu dopamin agar dead neuron tetap hidup kembali secara bertahap
+                            let dopamine = 0.00005;
+                            let delta = (lr * error_signal[offset + d] * in_val) + dopamine;
+                            
+                            let mut nq = self.kernel_q[k_offset + d] + delta;
+                            if nq > clip_max { nq = clip_max; } else if nq < clip_min { nq = clip_min; }
+                            self.kernel_q[k_offset + d] = nq;
 
-                        let mut nk = self.kernel_k[k_offset + d] + delta;
-                        if nk > clip_max { nk = clip_max; } else if nk < clip_min { nk = clip_min; }
-                        self.kernel_k[k_offset + d] = nk;
+                            let mut nk = self.kernel_k[k_offset + d] + delta;
+                            if nk > clip_max { nk = clip_max; } else if nk < clip_min { nk = clip_min; }
+                            self.kernel_k[k_offset + d] = nk;
 
-                        let mut nv = self.kernel_v[k_offset + d] + delta;
-                        if nv > clip_max { nv = clip_max; } else if nv < clip_min { nv = clip_min; }
-                        self.kernel_v[k_offset + d] = nv;
+                            let mut nv = self.kernel_v[k_offset + d] + delta;
+                            if nv > clip_max { nv = clip_max; } else if nv < clip_min { nv = clip_min; }
+                            self.kernel_v[k_offset + d] = nv;
+                        }
                     }
                 }
             }

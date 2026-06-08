@@ -12,6 +12,7 @@ pub struct SpikingSentenceEmbedder {
     pub attention: SpikingSelfAttention,
     pub pooler: SpikingDenseBPTT,
     pub max_seq_length: usize,
+    pub cached_actual_lengths: Option<Vec<usize>>,
 }
 
 impl SpikingSentenceEmbedder {
@@ -58,6 +59,7 @@ impl SpikingSentenceEmbedder {
             attention,
             pooler,
             max_seq_length,
+            cached_actual_lengths: None,
         }
     }
 
@@ -80,6 +82,8 @@ impl SpikingSentenceEmbedder {
             }
             tokenized_batch.extend(tokens_f32);
         }
+
+        self.cached_actual_lengths = Some(actual_lengths.clone());
 
         // Tahap 2: Spiking Embedding (Spatial ke Temporal Spikes)
         let emb_out = self.embedding.forward(&tokenized_batch);
@@ -138,19 +142,23 @@ impl SpikingSentenceEmbedder {
     /// Melatih jaringan menggunakan sinyal kesalahan gradien yang didapat dari Contrastive Hebbian Learning
     pub fn learn(&mut self, error_signals: &[Vec<f32>]) {
         let batch_size = error_signals.len();
+        let actual_lengths = self.cached_actual_lengths.as_ref().expect("Panggil encode dulu!");
         
         // 1. Backpropagate DenseBPTT Pooler
-        // error_signals: [batch_size, units]
-        // Kita distribusikan error merata di setiap time step untuk BPTT
-        let mut flat_errors = vec![0.0; batch_size * self.pooler.units];
+        // BPTT butuh error [time_steps][batch_size * units]
+        let mut error_seq = vec![vec![0.0; batch_size * self.pooler.units]; self.max_seq_length];
+        
         for b in 0..batch_size {
-            for u in 0..self.pooler.units {
-                flat_errors[b * self.pooler.units + u] = error_signals[b][u];
+            let len_f32 = if actual_lengths[b] == 0 { 1.0 } else { actual_lengths[b] as f32 };
+            for t in 0..self.max_seq_length {
+                if t < actual_lengths[b] {
+                    for u in 0..self.pooler.units {
+                        // Gradien dari mean pooling: error dibagi sequence length
+                        error_seq[t][b * self.pooler.units + u] = error_signals[b][u] / len_f32;
+                    }
+                }
             }
         }
-        
-        // BPTT butuh error [time_steps][batch_size * units]
-        let error_seq = vec![flat_errors; self.max_seq_length];
         
         // Ambil learning rate dari parameter dasar
         let lr = self.pooler.get_base_config().learning_rate;
@@ -160,13 +168,15 @@ impl SpikingSentenceEmbedder {
         let mut att_errors = vec![0.0; batch_size * self.max_seq_length * self.pooler.units];
         for b in 0..batch_size {
             for t in 0..self.max_seq_length {
-                let base_idx = (b * self.max_seq_length + t) * self.pooler.units;
-                for i in 0..self.pooler.units {
-                    att_errors[base_idx + i] = error_signals[b][i];
+                if t < actual_lengths[b] {
+                    let base_idx = (b * self.max_seq_length + t) * self.pooler.units;
+                    for i in 0..self.pooler.units {
+                        att_errors[base_idx + i] = error_seq[t][b * self.pooler.units + i];
+                    }
                 }
             }
         }
-        self.attention.learn_attention(&att_errors);
+        self.attention.learn_attention(&att_errors, actual_lengths);
 
         // 3. Distribusi error ke Spiking Embedding
         self.embedding.backward(&att_errors);
