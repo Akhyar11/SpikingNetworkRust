@@ -162,20 +162,23 @@ impl SpikingSentenceEmbedder {
         
         // Ambil learning rate dari parameter dasar
         let lr = self.pooler.get_base_config().learning_rate;
-        self.pooler.learn_through_time(&error_seq, lr);
+        let bptt_gradients = self.pooler.learn_through_time(&error_seq, lr);
 
         // 2. Distribusi error ke Self-Attention
-        let mut att_errors = vec![0.0; batch_size * self.max_seq_length * self.pooler.units];
+        // BPTT mengembalikan [time_steps][batch_size * in_features]
+        // Kita perlu meratakannya menjadi flat array [batch_size * max_seq_length * in_features]
+        let mut att_errors = vec![0.0; batch_size * self.max_seq_length * self.pooler.in_features];
         for b in 0..batch_size {
             for t in 0..self.max_seq_length {
                 if t < actual_lengths[b] {
-                    let base_idx = (b * self.max_seq_length + t) * self.pooler.units;
-                    for i in 0..self.pooler.units {
-                        att_errors[base_idx + i] = error_seq[t][b * self.pooler.units + i];
+                    let base_idx = (b * self.max_seq_length + t) * self.pooler.in_features;
+                    for i in 0..self.pooler.in_features {
+                        att_errors[base_idx + i] = bptt_gradients[t][b * self.pooler.in_features + i];
                     }
                 }
             }
         }
+        
         self.attention.learn_attention(&att_errors, actual_lengths);
 
         // 3. Distribusi error ke Spiking Embedding

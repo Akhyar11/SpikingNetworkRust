@@ -128,8 +128,8 @@ impl SpikingDenseBPTT {
     }
 
     /// Backpropagation Through Time (BPTT).
-    /// Dipanggil SEKALI saja setelah seluruh sequence/waktu (T) selesai dijalankan.
-    pub fn learn_through_time(&mut self, error_sequence: &[Vec<f32>], learning_rate: f32) {
+    /// Mengembalikan error_wrt_inputs berukuran [time_steps][batch_size * in_features]
+    pub fn learn_through_time(&mut self, error_sequence: &[Vec<f32>], learning_rate: f32) -> Vec<Vec<f32>> {
         if self.max_time_steps == 0 || self.history_inputs[0].is_empty() {
             panic!("Belum ada data memory di history_inputs! Jalankan compute_step() dulu.");
         }
@@ -138,6 +138,8 @@ impl SpikingDenseBPTT {
         let mut temporal_error_data = vec![0.0; batch_size * self.units];
         let mut masked_error_data = vec![0.0; batch_size * self.units];
         let window_size = 1.0;
+        
+        let mut error_wrt_inputs = vec![vec![0.0; batch_size * self.in_features]; self.max_time_steps];
 
         // Loop mundur (Backpropagation through TIME)
         for t in (0..self.max_time_steps).rev() {
@@ -175,8 +177,22 @@ impl SpikingDenseBPTT {
                     let idx = offset + i;
                     temporal_error_data[idx] = masked_error_data[idx] * self.beta[i];
                 }
+            // E: Hitung gradien untuk input layer sebelumnya (error wrt inputs)
+            for b in 0..batch_size {
+                let out_offset = b * self.units;
+                let in_offset = b * self.in_features;
+                for in_d in 0..self.in_features {
+                    let mut sum = 0.0;
+                    let k_offset = in_d * self.units;
+                    for out_d in 0..self.units {
+                        sum += masked_error_data[out_offset + out_d] * self.kernel[k_offset + out_d];
+                    }
+                    error_wrt_inputs[t][in_offset + in_d] = sum;
+                }
             }
         }
+        
+        error_wrt_inputs
     }
 }
 
