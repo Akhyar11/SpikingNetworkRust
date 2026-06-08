@@ -17,3 +17,7 @@ path = "experiment/train/main.rs"
 [[bin]]
 name = "eval"
 path = "experiment/eval/main.rs"
+
+[[bin]]
+name = "test_sentence_versus"
+path = "experiment/test_sentence_versus/main.rs"

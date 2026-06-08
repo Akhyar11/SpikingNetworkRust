@@ -75,7 +75,18 @@ fn main() {
     let (model_data, d_model, max_seq_length) = load_model(model_save_path);
 
     println!("Inisialisasi arsitektur jaringan SpikingSentenceEmbedder (D_Model: {}, Max_Seq: {})...", d_model, max_seq_length);
-    let mut embedder = SpikingSentenceEmbedder::new(tokenizer, vocab_size, d_model, max_seq_length);
+    let snn_config = sentence_embedder::SNNConfig {
+        d_model,
+        max_seq_length,
+        learning_rate: 0.01,
+        clip_min: -1.0,
+        clip_max: 1.0,
+        att_beta_range: (0.8, 0.99),
+        att_threshold_range: (0.1, 0.3),
+        bptt_beta_range: (0.8, 0.99),
+        bptt_threshold_range: (0.5, 1.0),
+    };
+    let mut embedder = SpikingSentenceEmbedder::new(tokenizer, vocab_size, snn_config);
     
     apply_weights(&mut embedder, &model_data);
 

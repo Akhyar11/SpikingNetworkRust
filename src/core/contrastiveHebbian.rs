@@ -8,96 +8,74 @@ pub fn contrastiveHebbian(
     err_data: &mut [f32],
     num_pairs: usize,
     sequence_length: usize,
-    d_model: usize
+    d_model: usize,
+    margin: f32
 ) -> f32 {
     let mut total_loss: f32 = 0.0;
 
-    let pair_losses: Vec<f32> = (0..num_pairs).into_par_iter().map(|i| {
-        let mut local_loss = 0.0;
-        let q_offset = i * sequence_length * d_model;
-        let p_offset = (num_pairs + i) * sequence_length * d_model;
-        
-        // Sampling negatif in-batch: kita gunakan tetangga terdekat secara berputar
-        let neg_idx = (i + 1) % num_pairs;
-        let n_offset = (num_pairs + neg_idx) * sequence_length * d_model;
-
-        // Gunakan pointer offset secara aman namun harus disimulasikan menggunakan indexing yang efisien
-        for s in 0..sequence_length {
-            for d in 0..d_model {
-                let idx_q = q_offset + s * d_model + d;
-                let idx_p = p_offset + s * d_model + d;
-                let idx_n = n_offset + s * d_model + d;
-
-                let q_spike = spikes[idx_q];
-                let p_spike = spikes[idx_p];
-                let n_spike = spikes[idx_n];
-
-                let mut err_q = p_spike - q_spike;
-                let mut err_p = q_spike - p_spike;
-                
-                // Suntik energi kecil jika terjadi "mati" semua agar bangun
-                if q_spike == 0.0 && p_spike == 0.0 && n_spike == 0.0 {
-                    err_q = 0.05;
-                    err_p = 0.05;
-                }
-
-                // Repulsi (tolak) Q dan N jika mereka tumpang tindih
-                let push_force = (q_spike * n_spike) * 0.2;
-                let mut repulse_q = (q_spike - n_spike) * push_force;
-                
-                // Symmetry breaking jika mereka identik
-                if q_spike == n_spike && q_spike > 0.0 {
-                    repulse_q = 0.01;
-                }
-
-                if err_q != 0.0 || err_p != 0.0 || repulse_q != 0.0 {
-                    local_loss += err_q.abs() + repulse_q.abs();
-                }
-            }
-        }
-        local_loss
-    }).collect();
-
-    total_loss = pair_losses.iter().sum();
-
-    // Karena err_data harus di-mutate dan par_iter mutable itu strict dengan non-overlapping slice,
-    // kita gunakan pendekatan mutasi sequential atau safe chunking.
+    // Kita asumsikan `spikes` ini sebenarnya adalah float embedding L2-Normalized dari tahapan sebelumnya.
+    // Jika mereka adalah L2 Normalized, ||q-p||^2 = 2 - 2(q . p).
+    // Jadi Loss = max(0, (q.n) - (q.p) + margin)
+    
+    // Karena butuh state penuh, lebih aman diserialkan di sini untuk memastikan thread-safety.
+    // Rayon masih bisa dipakai untuk pair_losses, namun kita simpan iterasi untuk mutasi.
+    
     for i in 0..num_pairs {
         let q_offset = i * sequence_length * d_model;
         let p_offset = (num_pairs + i) * sequence_length * d_model;
         let neg_idx = (i + 1) % num_pairs;
         let n_offset = (num_pairs + neg_idx) * sequence_length * d_model;
 
+        // 1. Hitung Dot Product
+        let mut dot_qp = 0.0;
+        let mut dot_qn = 0.0;
         for s in 0..sequence_length {
             for d in 0..d_model {
-                let idx_q = q_offset + s * d_model + d;
-                let idx_p = p_offset + s * d_model + d;
-                let idx_n = n_offset + s * d_model + d;
+                let q_s = spikes[q_offset + s * d_model + d];
+                let p_s = spikes[p_offset + s * d_model + d];
+                let n_s = spikes[n_offset + s * d_model + d];
+                dot_qp += q_s * p_s;
+                dot_qn += q_s * n_s;
+            }
+        }
 
-                let q_spike = spikes[idx_q];
-                let p_spike = spikes[idx_p];
-                let n_spike = spikes[idx_n];
+        // 2. Hitung Loss Margin
+        let loss = (dot_qn - dot_qp + margin).max(0.0);
+        total_loss += loss;
 
-                let mut err_q = p_spike - q_spike;
-                let mut err_p = q_spike - p_spike;
-                
-                if q_spike == 0.0 && p_spike == 0.0 && n_spike == 0.0 {
-                    err_q = 0.05;
-                    err_p = 0.05;
-                }
-                let push_force = (q_spike * n_spike) * 0.2;
-                let mut repulse_q = (q_spike - n_spike) * push_force;
-                let mut repulse_n = (n_spike - q_spike) * push_force;
-                
-                if q_spike == n_spike && q_spike > 0.0 {
-                    repulse_q = 0.01;
-                    repulse_n = -0.01;
-                }
+        // 3. Backpropagate jika loss aktif
+        if loss > 0.0 {
+            for s in 0..sequence_length {
+                for d in 0..d_model {
+                    let idx_q = q_offset + s * d_model + d;
+                    let idx_p = p_offset + s * d_model + d;
+                    let idx_n = n_offset + s * d_model + d;
 
-                if err_q != 0.0 || err_p != 0.0 || repulse_q != 0.0 {
-                    err_data[idx_q] += err_q + repulse_q;
-                    err_data[idx_p] += err_p;
-                    err_data[idx_n] += repulse_n;
+                    let q_s = spikes[idx_q];
+                    let p_s = spikes[idx_p];
+                    let n_s = spikes[idx_n];
+
+                    // Gradient:
+                    // dL/dq = n - p  => -dL/dq = p - n
+                    // dL/dp = -q     => -dL/dp = q
+                    // dL/dn = q      => -dL/dn = -q
+                    
+                    let mut grad_q = p_s - n_s;
+                    let mut grad_p = q_s;
+                    let mut grad_n = -q_s;
+
+                    // SYMMETRY BREAKING: Jika embeddings kolaps (identik), berikan dorongan acak deterministik
+                    // agar tidak stuck di gradien nol.
+                    if grad_q.abs() < 1e-5 && (q_s - p_s).abs() < 1e-5 {
+                        let noise = if (d + i) % 2 == 0 { 0.05 } else { -0.05 };
+                        grad_q = noise;
+                        grad_p = noise;
+                        grad_n = -noise;
+                    }
+                    
+                    err_data[idx_q] += grad_q;
+                    err_data[idx_p] += grad_p;
+                    err_data[idx_n] += grad_n; 
                 }
             }
         }

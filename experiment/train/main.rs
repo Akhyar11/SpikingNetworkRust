@@ -64,31 +64,61 @@ fn main() {
     
     // Hyperparameters (Metadata Pelatihan)
     let d_model = 64;
-    let max_seq_length = 128; // Diubah sesuai permintaan
+    let max_seq_length = 32; // Diubah sesuai permintaan
     let num_pairs = 32;       // Mengikuti referensi train_wiki_unsupervised.ts
     let batch_size = num_pairs * 2; // Total 64 kalimat per batch
+    let num_epochs = 1;
+
+    // SNN Hyperparameters diletakkan di sini sesuai permintaan
+    let snn_config = sentence_embedder::SNNConfig {
+        d_model,
+        max_seq_length,
+        learning_rate: 0.01,
+        clip_min: -1.0,
+        clip_max: 1.0,
+        att_beta_range: (0.8, 0.9),
+        att_threshold_range: (0.1, 0.3),
+        bptt_beta_range: (0.8, 0.9),
+        bptt_threshold_range: (0.1, 0.5),
+    };
+    
+    let margin = 0.2; // Margin untuk Contrastive Hebbian Loss
 
     println!("Inisialisasi SpikingSentenceEmbedder (Vocab: {}, D_Model: {})...", vocab_size, d_model);
-    let mut embedder = SpikingSentenceEmbedder::new(tokenizer, vocab_size, d_model, max_seq_length);
+    let mut embedder = SpikingSentenceEmbedder::new(tokenizer, vocab_size, snn_config);
     embedder.summary();
-
-    println!("Membaca corpus dari {}...", corpus_path);
-    let file = File::open(corpus_path).expect("Gagal membuka corpus. Pastikan file mini_corpus20mb.txt ada.");
-    let reader = BufReader::new(file);
-
-    let mut lines_iter = reader.lines();
     
-    let mut step = 0;
-    let start_time = Instant::now();
-    let mut last_log_time = Instant::now();
+    println!("Menganalisa corpus untuk menghitung total step...");
+    let mut valid_lines_count = 0;
+    if let Ok(file) = File::open(corpus_path) {
+        let reader = BufReader::new(file);
+        for line in reader.lines() {
+            if let Ok(l) = line {
+                let q_line = l.trim();
+                if !q_line.is_empty() && q_line.len() >= 31 {
+                    valid_lines_count += 1;
+                }
+            }
+        }
+    }
+    let max_steps_per_epoch = if valid_lines_count > 0 { valid_lines_count / num_pairs } else { 1 };
+    println!("Total kalimat valid: {}, Estimasi {} step per epoch", valid_lines_count, max_steps_per_epoch);
 
-    let mut q_texts = Vec::new();
-    let mut p_texts = Vec::new();
-    
-    while let Some(Ok(line)) = lines_iter.next() {
+    for epoch in 1..=num_epochs {
+        let mut step = 0; // Reset step counter per epoch
+        let mut start_time = Instant::now();
+        let mut last_log_time = Instant::now();
+        let file = File::open(corpus_path).expect("Gagal membuka corpus.");
+        let reader = BufReader::new(file);
+        let mut lines_iter = reader.lines();
+        
+        let mut q_texts = Vec::new();
+        let mut p_texts = Vec::new();
+        
+        while let Some(Ok(line)) = lines_iter.next() {
         let q_line = line.trim();
         // Lewati kalimat kosong atau terlalu pendek seperti pada referensi
-        if q_line.is_empty() || q_line.len() < 50 { continue; }
+        if q_line.is_empty() || q_line.len() < 31 { continue; }
         
         let p_line = corrupt_sentence(q_line);
         
@@ -100,31 +130,7 @@ fn main() {
             for q in &q_texts { batch_texts.push(q.as_str()); }
             for p in &p_texts { batch_texts.push(p.as_str()); }
 
-            // Encode (Forward pass)
-            let embeddings = embedder.encode(&batch_texts);
-
-            // Ratakan output embeddings untuk fungsi native contrastiveHebbian
-            let mut flat_embeddings = Vec::with_capacity(batch_size * d_model);
-            for emb in &embeddings {
-                flat_embeddings.extend_from_slice(emb);
-            }
-
-            // Siapkan array error/gradient (Delta)
-            let mut err_data = vec![0.0; batch_size * d_model];
-            
-            // Hitung Contrastive Hebbian Loss dan gradient
-            let loss = contrastiveHebbian(&flat_embeddings, &mut err_data, num_pairs, 1, d_model);
-
-            // Susun kembali sinyal error ke bentuk matriks 2D untuk backward pass SNN
-            let mut error_signals = vec![vec![0.0; d_model]; batch_size];
-            for b in 0..batch_size {
-                for i in 0..d_model {
-                    error_signals[b][i] = err_data[b * d_model + i];
-                }
-            }
-
-            // Propagasi mundur
-            embedder.learn(&error_signals);
+            let loss = embedder.train_step(&batch_texts, num_pairs, margin);
 
             q_texts.clear();
             p_texts.clear();
@@ -134,22 +140,22 @@ fn main() {
                 let elapsed_total = start_time.elapsed();
                 let elapsed_interval = last_log_time.elapsed();
                 let ms_per_batch = elapsed_interval.as_millis() as f64 / 10.0;
-                
-                let max_steps = 1000;
-                let pct = step as f64 / max_steps as f64;
-                let bar_len = 20;
+                let pct = (step as f64 / max_steps_per_epoch as f64).min(1.0);
+                let bar_len: usize = 20;
                 let filled = (pct * bar_len as f64) as usize;
-                let empty = bar_len - filled;
+                let empty = bar_len.saturating_sub(filled);
                 let bar = format!("{}{}{}", "=".repeat(filled), ">", " ".repeat(empty));
 
                 print!(
-                    "\r[{:02}:{:02}:{:02}] [{}] Step: {:4}/{} | Loss: {:>8.4} | {:>6.2} ms/batch  ",
+                    "\r[{:02}:{:02}:{:02}] Epoch: {}/{} | [{}] Step: {:5}/{} | Loss: {:>8.4} | {:>6.2} ms/batch  ",
                     elapsed_total.as_secs() / 3600,
                     (elapsed_total.as_secs() % 3600) / 60,
                     elapsed_total.as_secs() % 60,
+                    epoch,
+                    num_epochs,
                     bar,
                     step,
-                    max_steps,
+                    max_steps_per_epoch,
                     loss,
                     ms_per_batch
                 );
@@ -157,13 +163,9 @@ fn main() {
                 
                 last_log_time = Instant::now();
             }
-
-            // Lakukan iterasi untuk pemanasan jaringan
-            if step >= 1000 {
-                println!(); // Pindah ke baris baru setelah selesai
-                break;
-            }
         }
+        } // Tutup while let loop
+        println!("\nEpoch {} selesai!", epoch);
     }
 
     println!("Training eksperimen selesai! Menyimpan model...");
