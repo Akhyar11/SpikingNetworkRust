@@ -191,7 +191,7 @@ impl SpikingSelfAttention {
                 for i in 0..self.sequence_length {
                     if i >= actual_lengths[b] { continue; }
                     let score_idx = b * self.sequence_length * self.sequence_length + i * self.sequence_length + j;
-                    let graded_score = match_scores[score_idx];
+                    let graded_score = s_scores_data[score_idx];
                     if graded_score > 0.0 {
                         let out_base = b * self.sequence_length * self.d_model + i * self.d_model;
                         for &d in &non_zero_v {
@@ -204,7 +204,7 @@ impl SpikingSelfAttention {
 
         // Opsional: Batasi output menjadi biner (spike) jika layer berikutnya menuntut binary matrix (sesuai JS)
         for x in out_data.iter_mut() {
-            if *x > 0.0 { *x = 1.0; } else { *x = 0.0; }
+            if *x > 1.0 { *x = 1.0; }
         }
 
         out_data

@@ -66,6 +66,7 @@ impl SpikingSentenceEmbedder {
     /// Forward pass mengonversi teks mentah menjadi representasi semantik ruang metrik (Metric Space)
     pub fn encode(&mut self, texts: &[&str]) -> Vec<Vec<f32>> {
         let batch_size = texts.len();
+        self.embedding.reset_state();
         let mut tokenized_batch = Vec::with_capacity(batch_size * self.max_seq_length);
 
         // Tahap 1: Tokenisasi & Padding

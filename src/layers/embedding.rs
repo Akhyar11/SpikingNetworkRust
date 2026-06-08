@@ -90,6 +90,13 @@ impl Layer for SpikingEmbedding {
 impl SpikingEmbedding {
     /// Forward pass:
     /// `inputs`: Array 1D yang berisi urutan Token ID.
+    pub fn reset_state(&mut self) {
+        for p in self.potentials.iter_mut() { *p = 0.0; }
+        for lp in self.last_potentials.iter_mut() { *lp = 0.0; }
+        self.last_inputs = None;
+        self.last_spikes = None;
+    }
+
     /// Mengembalikan flat matrix spikes dengan bentuk `[batch_size, output_dim]`.
     pub fn forward(&mut self, inputs: &[f32]) -> Vec<f32> {
         let batch_size = inputs.len();
