@@ -100,18 +100,6 @@ fn main() {
         
         let sim = cosine_similarity(&embeddings[0], &embeddings[1]);
         
-        if step < 3 {
-            println!("Debug Pair {}: sim={}", step, sim);
-            println!("  Text 1 (len {}): {}", texts[0].len(), texts[0]);
-            let tok1 = embedder.tokenizer.encode(texts[0]);
-            println!("  Tok  1: {:?}", tok1);
-            println!("  Text 2 (len {}): {}", texts[1].len(), texts[1]);
-            let tok2 = embedder.tokenizer.encode(texts[1]);
-            println!("  Tok  2: {:?}", tok2);
-            println!("  Emb 1 sample: {:?}", &embeddings[0][..5]);
-            println!("  Emb 2 sample: {:?}", &embeddings[1][..5]);
-        }
-        
         predictions.push(sim);
         targets.push(pair.score);
 

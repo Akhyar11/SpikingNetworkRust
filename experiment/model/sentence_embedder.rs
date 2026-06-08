@@ -9,7 +9,6 @@ use SpikingNetworkRust::layers::base::Layer;
 pub struct SpikingSentenceEmbedder {
     pub tokenizer: BPETokenizer,
     pub embedding: SpikingEmbedding,
-    pub attention: SpikingSelfAttention,
     pub pooler: SpikingDenseBPTT,
     pub max_seq_length: usize,
     pub cached_actual_lengths: Option<Vec<usize>>,
@@ -31,18 +30,7 @@ impl SpikingSentenceEmbedder {
             1.0
         );
 
-        // 2. Linear Self-Attention Layer (O(N*d^2) efficiency)
-        let attention = SpikingSelfAttention::new(
-            d_model,
-            max_seq_length,
-            0.01,
-            -1.0,
-            1.0,
-            (0.8, 0.99),
-            (0.1, 0.3)
-        );
-
-        // 3. Temporal Pooling Layer (BPTT)
+        // 2. Temporal Pooling Layer (BPTT)
         let pooler = SpikingDenseBPTT::new(
             d_model,
             d_model,
@@ -50,13 +38,12 @@ impl SpikingSentenceEmbedder {
             -1.0,
             1.0,
             (0.8, 0.99),
-            (0.1, 0.3)
+            (0.5, 1.0)
         );
 
         Self {
             tokenizer,
             embedding,
-            attention,
             pooler,
             max_seq_length,
             cached_actual_lengths: None,
@@ -89,10 +76,7 @@ impl SpikingSentenceEmbedder {
         // Tahap 2: Spiking Embedding (Spatial ke Temporal Spikes)
         let emb_out = self.embedding.forward(&tokenized_batch);
 
-        // Tahap 3: Spiking Self-Attention (Pencarian Konteks Global)
-        let att_out = self.attention.forward(&emb_out, &actual_lengths);
-
-        // Tahap 4: Temporal Pooling dengan BPTT (Integrasi Waktu)
+        // Tahap 3: Temporal Pooling dengan BPTT (Integrasi Waktu)
         self.pooler.reset_sequence(batch_size, self.max_seq_length);
         let mut final_embeddings = vec![vec![0.0; self.pooler.units]; batch_size];
 
@@ -102,7 +86,7 @@ impl SpikingSentenceEmbedder {
                 if t < actual_lengths[b] {
                     let base_idx = (b * self.max_seq_length + t) * self.pooler.in_features;
                     for i in 0..self.pooler.in_features {
-                        step_input[b * self.pooler.in_features + i] = att_out[base_idx + i];
+                        step_input[b * self.pooler.in_features + i] = emb_out[base_idx + i];
                     }
                 }
             }
@@ -165,25 +149,22 @@ impl SpikingSentenceEmbedder {
         let lr = self.pooler.get_base_config().learning_rate;
         let bptt_gradients = self.pooler.learn_through_time(&error_seq, lr);
 
-        // 2. Distribusi error ke Self-Attention
+        // 2. Distribusi error ke Spiking Embedding
         // BPTT mengembalikan [time_steps][batch_size * in_features]
         // Kita perlu meratakannya menjadi flat array [batch_size * max_seq_length * in_features]
-        let mut att_errors = vec![0.0; batch_size * self.max_seq_length * self.pooler.in_features];
+        let mut emb_errors = vec![0.0; batch_size * self.max_seq_length * self.pooler.in_features];
         for b in 0..batch_size {
             for t in 0..self.max_seq_length {
                 if t < actual_lengths[b] {
                     let base_idx = (b * self.max_seq_length + t) * self.pooler.in_features;
                     for i in 0..self.pooler.in_features {
-                        att_errors[base_idx + i] = bptt_gradients[t][b * self.pooler.in_features + i];
+                        emb_errors[base_idx + i] = bptt_gradients[t][b * self.pooler.in_features + i];
                     }
                 }
             }
         }
         
-        self.attention.learn_attention(&att_errors, actual_lengths);
-
-        // 3. Distribusi error ke Spiking Embedding
-        self.embedding.backward(&att_errors);
+        self.embedding.backward(&emb_errors);
     }
 
     /// Menampilkan keseluruhan topologi SNN
@@ -193,9 +174,8 @@ impl SpikingSentenceEmbedder {
         println!("=============================================");
         println!(" Max Sequence Length: {}", self.max_seq_length);
         println!(" Vocabulary Size    : {}", self.embedding.input_dim);
-        println!(" D_Model (Units)    : {}", self.attention.d_model);
+        println!(" D_Model (Units)    : {}", self.embedding.output_dim);
         self.embedding.summary();
-        self.attention.summary();
         self.pooler.summary();
         println!("=============================================");
     }

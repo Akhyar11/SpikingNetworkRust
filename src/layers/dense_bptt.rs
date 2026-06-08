@@ -44,9 +44,8 @@ impl SpikingDenseBPTT {
         let limit = (6.0 / (in_features as f32 + units as f32)).sqrt();
         
         let mut kernel = vec![0.0; in_features * units];
-        let scale = (in_features as f32).sqrt();
         for w in kernel.iter_mut() {
-            *w = rng.gen_range(-limit..limit) * scale;
+            *w = rng.gen_range(-limit..limit);
         }
 
         let bias = vec![0.0; units];
@@ -55,7 +54,9 @@ impl SpikingDenseBPTT {
         let mut threshold = vec![0.0; units];
         
         for i in 0..units {
-            beta[i] = rng.gen_range(beta_range.0 .. beta_range.1);
+            // Pilih pangkat bit-shift secara acak (2 hingga 5) sesuai dengan Oxide-JS
+            let shift = rng.gen_range(2..6) as i32;
+            beta[i] = 1.0 - (1.0 / (2.0f32).powi(shift));
             threshold[i] = rng.gen_range(threshold_range.0 .. threshold_range.1);
         }
 
