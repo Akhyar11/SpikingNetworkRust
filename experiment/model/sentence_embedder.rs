@@ -284,7 +284,7 @@ impl SpikingSentenceEmbedder {
             }
         }
         
-        let lr = self.pooler.get_base_config().learning_rate;
+        let _lr = self.pooler.get_base_config().learning_rate;
         // TEMPORAL POOLER DIBEKUKAN SEBAGAI INTEGRATOR MURNI
         // self.pooler.learn_through_time(&error_seq, lr);
 

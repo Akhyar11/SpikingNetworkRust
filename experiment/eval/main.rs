@@ -88,7 +88,7 @@ fn pearson_correlation(x: &[f32], y: &[f32]) -> f32 {
 
 fn main() {
     let vocab_path = "experiment/file_model/vocab.json";
-    let model_save_path = "experiment/file_model/saved_model.json";
+    let model_save_path = "experiment/file_model/saved_model_human.json";
     let eval_dataset_path = "experiment/file_model/sts-b_valid.json";
 
     println!("Memuat tokenizer...");

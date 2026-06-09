@@ -29,3 +29,11 @@ path = "experiment/train_simcse/main.rs"
 [[bin]]
 name = "train_distillation"
 path = "experiment/train_distillation/main.rs"
+
+[[bin]]
+name = "test_single_pair"
+path = "experiment/test_single_pair/main.rs"
+
+[[bin]]
+name = "train_human_only"
+path = "experiment/train_human_only/main.rs"

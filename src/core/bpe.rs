@@ -27,6 +27,7 @@ pub struct BPEVocabData {
     pub config: BPEConfigSerde,
 }
 
+#[allow(dead_code)]
 pub struct BPETokenizer {
     vocab: HashMap<String, u32>,
     reverse_vocab: HashMap<u32, String>,
