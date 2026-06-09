@@ -212,7 +212,9 @@ impl Layer for SpikingDenseBPTT {
     fn get_parameters(&self) -> Vec<(&str, &[f32])> {
         vec![
             ("kernel", &self.kernel),
-            ("bias", &self.bias)
+            ("bias", &self.bias),
+            ("beta", &self.beta),
+            ("threshold", &self.threshold),
         ]
     }
 
@@ -226,6 +228,16 @@ impl Layer for SpikingDenseBPTT {
             "bias" => {
                 if data.len() != self.bias.len() { return Err("Ukuran bias tidak cocok".into()); }
                 self.bias.copy_from_slice(data);
+                Ok(())
+            },
+            "beta" => {
+                if data.len() != self.beta.len() { return Err("Ukuran beta tidak cocok".into()); }
+                self.beta.copy_from_slice(data);
+                Ok(())
+            },
+            "threshold" => {
+                if data.len() != self.threshold.len() { return Err("Ukuran threshold tidak cocok".into()); }
+                self.threshold.copy_from_slice(data);
                 Ok(())
             },
             _ => Err(format!("Parameter {} tidak ditemukan di SpikingDenseBPTT", name))

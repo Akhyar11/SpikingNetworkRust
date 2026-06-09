@@ -64,18 +64,33 @@ impl Layer for SpikingEmbedding {
     }
     
     fn get_parameters(&self) -> Vec<(&str, &[f32])> {
-        vec![("weights", &self.weights)]
+        vec![
+            ("weights", &self.weights),
+            ("beta", &self.beta),
+            ("threshold", &self.threshold),
+        ]
     }
 
     fn set_parameter(&mut self, name: &str, data: &[f32]) -> Result<(), String> {
-        if name == "weights" {
-            if data.len() != self.weights.len() {
-                return Err("Ukuran bobot (shape) tidak cocok saat memuat model".to_string());
-            }
-            self.weights.copy_from_slice(data);
-            Ok(())
-        } else {
-            Err(format!("Parameter {} tidak ditemukan di SpikingEmbedding", name))
+        match name {
+            "weights" => {
+                if data.len() != self.weights.len() {
+                    return Err("Ukuran bobot (shape) tidak cocok saat memuat model".to_string());
+                }
+                self.weights.copy_from_slice(data);
+                Ok(())
+            },
+            "beta" => {
+                if data.len() != self.beta.len() { return Err("Ukuran beta tidak cocok".into()); }
+                self.beta.copy_from_slice(data);
+                Ok(())
+            },
+            "threshold" => {
+                if data.len() != self.threshold.len() { return Err("Ukuran threshold tidak cocok".into()); }
+                self.threshold.copy_from_slice(data);
+                Ok(())
+            },
+            _ => Err(format!("Parameter {} tidak ditemukan di SpikingEmbedding", name))
         }
     }
 

@@ -261,7 +261,11 @@ impl Layer for SpikingSelfAttention {
         vec![
             ("kernel_q", &self.kernel_q),
             ("kernel_k", &self.kernel_k),
-            ("kernel_v", &self.kernel_v)
+            ("kernel_v", &self.kernel_v),
+            ("beta_qkv", &self.beta_qkv),
+            ("threshold_qkv", &self.threshold_qkv),
+            ("beta_scores", &self.beta_scores),
+            ("threshold_scores", &self.threshold_scores),
         ]
     }
 
@@ -280,6 +284,26 @@ impl Layer for SpikingSelfAttention {
             "kernel_v" => {
                 if data.len() != self.kernel_v.len() { return Err("Ukuran kernel_v tidak cocok".into()); }
                 self.kernel_v.copy_from_slice(data);
+                Ok(())
+            },
+            "beta_qkv" => {
+                if data.len() != self.beta_qkv.len() { return Err("Ukuran beta_qkv tidak cocok".into()); }
+                self.beta_qkv.copy_from_slice(data);
+                Ok(())
+            },
+            "threshold_qkv" => {
+                if data.len() != self.threshold_qkv.len() { return Err("Ukuran threshold_qkv tidak cocok".into()); }
+                self.threshold_qkv.copy_from_slice(data);
+                Ok(())
+            },
+            "beta_scores" => {
+                if data.len() != self.beta_scores.len() { return Err("Ukuran beta_scores tidak cocok".into()); }
+                self.beta_scores.copy_from_slice(data);
+                Ok(())
+            },
+            "threshold_scores" => {
+                if data.len() != self.threshold_scores.len() { return Err("Ukuran threshold_scores tidak cocok".into()); }
+                self.threshold_scores.copy_from_slice(data);
                 Ok(())
             },
             _ => Err(format!("Parameter {} tidak ditemukan di SpikingSelfAttention", name))
