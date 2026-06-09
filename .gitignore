@@ -1,1 +1,5 @@
 /target
+/experiment/file_model/*.json
+!experiment/file_model/vocab.json
+Cargo.lock
+dataset/
