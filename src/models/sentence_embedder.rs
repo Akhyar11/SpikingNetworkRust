@@ -4,6 +4,15 @@ use crate::layers::self_attention::SpikingSelfAttention;
 use crate::layers::dense_bptt::SpikingDenseBPTT;
 use crate::layers::base::Layer;
 
+#[derive(Default, Clone, Copy)]
+pub struct SNNMetrics {
+    pub embedding_spikes: usize,
+    pub attention_spikes: usize,
+    pub pooler_spikes: usize,
+    pub total_sops: usize,
+    pub total_sentences: usize,
+}
+
 #[derive(Clone, Copy)]
 pub struct SNNConfig {
     pub d_model: usize,
@@ -24,6 +33,7 @@ pub struct SpikingSentenceEmbedder {
     pub pooler: SpikingDenseBPTT,
     pub max_seq_length: usize,
     pub cached_actual_lengths: Option<Vec<usize>>,
+    pub metrics: SNNMetrics,
 }
 
 impl SpikingSentenceEmbedder {
@@ -73,6 +83,7 @@ impl SpikingSentenceEmbedder {
             pooler,
             max_seq_length: config.max_seq_length,
             cached_actual_lengths: None,
+            metrics: SNNMetrics::default(),
         }
     }
 
@@ -113,7 +124,19 @@ impl SpikingSentenceEmbedder {
         let d_model = self.embedding.output_dim;
 
         let emb_out = self.embedding.forward(&tokenized_batch);
+        let mut emb_spikes = 0;
+        for &val in &emb_out {
+            if val > 0.0 { emb_spikes += 1; }
+        }
+        self.metrics.embedding_spikes += emb_spikes;
+        self.metrics.total_sops += emb_spikes * self.attention.d_model * 3;
+
         let att_out = self.attention.forward(&emb_out, &actual_lengths);
+        let mut att_spikes = 0;
+        for &val in &att_out {
+            if val > 0.0 { att_spikes += 1; }
+        }
+        self.metrics.attention_spikes += att_spikes;
 
         let mut aggregated_features = vec![0.0; batch_seq * d_model];
         for i in 0..(batch_seq * d_model) {
@@ -134,13 +157,22 @@ impl SpikingSentenceEmbedder {
                 }
             }
 
-            self.pooler.compute_step(&step_input, t);
+            let out_spikes = self.pooler.compute_step(&step_input, t);
 
             for b in 0..batch_size {
                 if t < actual_lengths[b] {
+                    let in_base = b * self.pooler.in_features;
+                    for i in 0..self.pooler.in_features {
+                        if step_input[in_base + i] > 0.0 {
+                            self.metrics.total_sops += self.pooler.units;
+                        }
+                    }
+
                     let offset = b * self.pooler.units;
                     for i in 0..self.pooler.units {
-                        // JS infer() accumulates historyPotentials
+                        if out_spikes[offset + i] > 0.0 {
+                            self.metrics.pooler_spikes += 1;
+                        }
                         final_embeddings[b][i] += self.pooler.history_potentials[t][offset + i];
                     }
                 }
@@ -158,6 +190,7 @@ impl SpikingSentenceEmbedder {
             }
         }
 
+        self.metrics.total_sentences += batch_size;
         final_embeddings
     }
 

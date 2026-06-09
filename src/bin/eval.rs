@@ -3,9 +3,10 @@ use SpikingNetworkRust::layers::base::Layer;
 use SpikingNetworkRust::models::sentence_embedder::SpikingSentenceEmbedder;
 use SpikingNetworkRust::models::sentence_embedder;
 use std::fs::File;
-use std::io::BufReader;
+use std::io::{BufReader, Write};
 use std::time::Instant;
 use serde::Deserialize;
+use serde_json::json;
 
 #[derive(Deserialize)]
 struct STSPair {
@@ -149,13 +150,28 @@ fn main() {
     let duration = start_time.elapsed().as_secs_f64();
     let pearson = pearson_correlation(&predictions, &targets);
     
+    let avg_sops = embedder.metrics.total_sops as f64 / embedder.metrics.total_sentences as f64;
+    let avg_spikes = (embedder.metrics.embedding_spikes + embedder.metrics.attention_spikes + embedder.metrics.pooler_spikes) as f64 / embedder.metrics.total_sentences as f64;
+    
+    // Perkiraan komputasi transformer standar (misal MiniLM 6 layer)
+    let seq_f64 = max_seq_length as f64;
+    let d_f64 = d_model as f64;
+    let transformer_macs = (12.0 * seq_f64 * d_f64.powi(2) + 2.0 * seq_f64.powi(2) * d_f64) * 6.0;
+    
     println!("\n=============================================");
     println!("             HASIL EVALUASI SNN              ");
     println!("=============================================");
-    println!(" Total Pasangan   : {}", total);
-    println!(" Waktu Inferensi  : {:.2} detik", duration);
-    println!(" Kecepatan        : {:.2} ms / pasang", (duration * 1000.0) / total as f64);
-    println!(" Pearson (STS-B)  : {:.4}", pearson);
+    println!(" Total Pasangan       : {}", total);
+    println!(" Waktu Inferensi      : {:.2} detik", duration);
+    println!(" Kecepatan            : {:.2} ms / pasang", (duration * 1000.0) / total as f64);
+    println!(" Pearson (STS-B)      : {:.4}", pearson);
+    println!("---------------------------------------------");
+    println!("     METRIK EFISIENSI ENERGI (PER KALIMAT)   ");
+    println!("---------------------------------------------");
+    println!(" Rata-rata Spikes     : {:.0}", avg_spikes);
+    println!(" SNN AC Ops (SOPs)    : {:.0}", avg_sops);
+    println!(" Transformer MACs     : {:.0} (Estimasi 6 layer)", transformer_macs);
+    println!(" Rasio Penghematan    : {:.2}x lebih sedikit operasi aktif", transformer_macs / avg_sops.max(1.0));
     println!("=============================================\n");
     
     println!("=============================================");
@@ -169,4 +185,22 @@ fn main() {
         println!("  Prediksi Cosine (0-1): {:.4}", pred);
         println!("---------------------------------------------");
     }
+
+    let metrics_json = json!({
+        "total_pairs": total,
+        "inference_time_seconds": duration,
+        "ms_per_pair": (duration * 1000.0) / total as f64,
+        "pearson_correlation": pearson,
+        "energy_metrics": {
+            "average_spikes_per_sentence": avg_spikes,
+            "snn_sops_per_sentence": avg_sops,
+            "transformer_macs_estimated": transformer_macs,
+            "energy_savings_ratio": transformer_macs / avg_sops.max(1.0)
+        }
+    });
+
+    let metrics_path = "experiment/file_model/eval_metrics.json";
+    let mut file = File::create(metrics_path).expect("Gagal membuat file eval_metrics.json");
+    file.write_all(serde_json::to_string_pretty(&metrics_json).unwrap().as_bytes()).expect("Gagal menulis eval_metrics.json");
+    println!("Metrik evaluasi berhasil disimpan ke {}", metrics_path);
 }
