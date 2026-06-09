@@ -2,8 +2,9 @@
 Cargo.lock
 dataset/
 
-# Abaikan file bobot model (besar, ±47MB) - simpan di luar git
+# Abaikan file bobot model (besar, ±47-52MB) - simpan di luar git
 /experiment/file_model/saved_model_human.json
 /experiment/file_model/saved_model_simcse.json
 /experiment/file_model/saved_model_distil.json
 /experiment/file_model/saved_model.json
+/experiment/file_model/init_weights.json
