@@ -121,6 +121,7 @@ fn main() {
 
     let mut predictions = Vec::with_capacity(total);
     let mut targets = Vec::with_capacity(total);
+    let mut samples: Vec<(String, String, f32, f32)> = Vec::new();
 
     let start_time = Instant::now();
     let mut step = 0;
@@ -137,6 +138,10 @@ fn main() {
         
         predictions.push(sim);
         targets.push(pair.score);
+        
+        if samples.len() < 5 {
+            samples.push((pair.sentence1.clone(), pair.sentence2.clone(), pair.score, sim));
+        }
 
         step += 1;
         if step % 200 == 0 {
@@ -154,5 +159,17 @@ fn main() {
     println!(" Waktu Inferensi  : {:.2} detik", duration);
     println!(" Kecepatan        : {:.2} ms / pasang", (duration * 1000.0) / total as f64);
     println!(" Pearson (STS-B)  : {:.4}", pearson);
+    println!("=============================================\n");
+    
     println!("=============================================");
+    println!("             CONTOH PREDIKSI                 ");
+    println!("=============================================");
+    for (i, (s1, s2, target, pred)) in samples.iter().enumerate() {
+        println!("Sampel {}", i + 1);
+        println!("  Kalimat 1: {}", s1);
+        println!("  Kalimat 2: {}", s2);
+        println!("  Target Aktual (0-1): {:.4}", target);
+        println!("  Prediksi Cosine (0-1): {:.4}", pred);
+        println!("---------------------------------------------");
+    }
 }

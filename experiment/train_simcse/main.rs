@@ -28,11 +28,11 @@ fn main() {
     let vocab_size = tokenizer.vocab_size();
     
     // Hyperparameters (Metadata Pelatihan)
-    let d_model = 256;
-    let max_seq_length = 128; // Diubah sesuai permintaan
+    let d_model = 128;
+    let max_seq_length = 32; // Diubah sesuai permintaan
     let num_pairs = 32;       // Mengikuti referensi train_wiki_unsupervised.ts
     let _batch_size = num_pairs * 2; // Total 64 kalimat per batch
-    let num_epochs = 10;
+    let num_epochs = 1;
     let min_words = 10;
 
     // SNN Hyperparameters diletakkan di sini sesuai permintaan
