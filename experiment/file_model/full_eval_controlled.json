@@ -1,0 +1,144 @@
+{
+  "controlled_initialization": true,
+  "evaluation": {
+    "Human-Only (STS-B)": {
+      "results": {
+        "SICK-R": {
+          "ms_per_pair": 1.0481731809207213,
+          "n_pairs": 9927,
+          "pearson": 0.3879765272140503
+        },
+        "STS-12": {
+          "ms_per_pair": 1.0081111528314028,
+          "n_pairs": 3108,
+          "pearson": 0.3969886600971222
+        },
+        "STS-13": {
+          "ms_per_pair": 1.0695923253333333,
+          "n_pairs": 1500,
+          "pearson": 0.40955671668052673
+        },
+        "STS-14": {
+          "ms_per_pair": 1.0171782274666665,
+          "n_pairs": 3750,
+          "pearson": 0.44109129905700684
+        },
+        "STS-15": {
+          "ms_per_pair": 1.1358158086666668,
+          "n_pairs": 3000,
+          "pearson": 0.45532703399658203
+        },
+        "STS-16": {
+          "ms_per_pair": 1.0624151020236088,
+          "n_pairs": 1186,
+          "pearson": 0.34328389167785645
+        },
+        "STS-B": {
+          "ms_per_pair": 1.022846466,
+          "n_pairs": 1500,
+          "pearson": 0.6090832352638245
+        },
+        "_energy": {
+          "average_spikes_per_sentence": 629.7690542739143,
+          "energy_savings_ratio": 126.8274448513314,
+          "snn_sops_per_sentence": 80610.43894706103,
+          "transformer_macs_estimated": 10223616.0
+        }
+      },
+      "train_time_seconds": 3.61359836
+    },
+    "Knowledge Distillation (AI)": {
+      "results": {
+        "SICK-R": {
+          "ms_per_pair": 1.020808474161378,
+          "n_pairs": 9927,
+          "pearson": 0.40744084119796753
+        },
+        "STS-12": {
+          "ms_per_pair": 1.0400613667953666,
+          "n_pairs": 3108,
+          "pearson": 0.4321114718914032
+        },
+        "STS-13": {
+          "ms_per_pair": 1.0361641313333332,
+          "n_pairs": 1500,
+          "pearson": 0.4137648046016693
+        },
+        "STS-14": {
+          "ms_per_pair": 1.0843690050666666,
+          "n_pairs": 3750,
+          "pearson": 0.4604249894618988
+        },
+        "STS-15": {
+          "ms_per_pair": 1.087602623,
+          "n_pairs": 3000,
+          "pearson": 0.4621873199939728
+        },
+        "STS-16": {
+          "ms_per_pair": 1.114052129005059,
+          "n_pairs": 1186,
+          "pearson": 0.333351194858551
+        },
+        "STS-B": {
+          "ms_per_pair": 1.1054241673333334,
+          "n_pairs": 1500,
+          "pearson": 0.6315261721611023
+        },
+        "_energy": {
+          "average_spikes_per_sentence": 476.32184723207206,
+          "energy_savings_ratio": 167.68493921523824,
+          "snn_sops_per_sentence": 60969.19644570522,
+          "transformer_macs_estimated": 10223616.0
+        }
+      },
+      "train_time_seconds": 31.742275474
+    },
+    "Unsupervised SimCSE": {
+      "results": {
+        "SICK-R": {
+          "ms_per_pair": 1.0859848944293342,
+          "n_pairs": 9927,
+          "pearson": 0.3825662136077881
+        },
+        "STS-12": {
+          "ms_per_pair": 1.1807826676319177,
+          "n_pairs": 3108,
+          "pearson": 0.30084601044654846
+        },
+        "STS-13": {
+          "ms_per_pair": 1.1051329973333333,
+          "n_pairs": 1500,
+          "pearson": 0.3012706935405731
+        },
+        "STS-14": {
+          "ms_per_pair": 1.1119160605333336,
+          "n_pairs": 3750,
+          "pearson": 0.33934321999549866
+        },
+        "STS-15": {
+          "ms_per_pair": 1.125180801,
+          "n_pairs": 3000,
+          "pearson": 0.31954529881477356
+        },
+        "STS-16": {
+          "ms_per_pair": 1.1457058490725125,
+          "n_pairs": 1186,
+          "pearson": 0.23779715597629547
+        },
+        "STS-B": {
+          "ms_per_pair": 1.1522661140000001,
+          "n_pairs": 1500,
+          "pearson": 0.49320945143699646
+        },
+        "_energy": {
+          "average_spikes_per_sentence": 1571.7068958324642,
+          "energy_savings_ratio": 86.16000349390042,
+          "snn_sops_per_sentence": 118658.49100997038,
+          "transformer_macs_estimated": 10223616.0
+        }
+      },
+      "train_time_seconds": 28.702641485
+    }
+  },
+  "init_weights_file": "experiment/file_model/init_weights.json"
+}
