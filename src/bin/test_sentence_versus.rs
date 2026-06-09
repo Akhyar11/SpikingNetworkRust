@@ -1,9 +1,7 @@
-#[path = "../model/sentence_embedder.rs"]
-pub mod sentence_embedder;
-
 use SpikingNetworkRust::core::bpe::BPETokenizer;
 use SpikingNetworkRust::layers::base::Layer;
-use sentence_embedder::SpikingSentenceEmbedder;
+use SpikingNetworkRust::models::sentence_embedder::SpikingSentenceEmbedder;
+use SpikingNetworkRust::models::sentence_embedder;
 use std::fs::File;
 use std::io::{self, BufReader, Write};
 use std::time::Instant;
@@ -24,14 +22,12 @@ fn apply_weights(embedder: &mut SpikingSentenceEmbedder, model_data: &serde_json
         if let Some(obj) = model_data.get(group).and_then(|v| v.as_object()) {
             for (k, v) in obj {
                 let data: Vec<f32> = serde_json::from_value(v.clone()).unwrap();
-                // Ignored result, just like eval/main.rs
                 let _ = layer.set_parameter(k, &data);
             }
         }
     };
 
     load_layer(&mut embedder.embedding, "embedding");
-    // load_layer(&mut embedder.attention, "attention"); // Telah dihapus
     load_layer(&mut embedder.pooler, "pooler");
 }
 

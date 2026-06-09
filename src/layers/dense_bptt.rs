@@ -21,8 +21,6 @@ pub struct SpikingDenseBPTT {
 
     pub potentials: Vec<f32>,
 
-    // History buffers untuk Backpropagation Through Time (BPTT)
-    // Dimensi: [time_step][batch_size * units]
     pub history_inputs: Vec<Vec<f32>>,
     pub history_potentials: Vec<Vec<f32>>,
     pub history_spikes: Vec<Vec<f32>>,
@@ -40,7 +38,6 @@ impl SpikingDenseBPTT {
         threshold_range: (f32, f32)
     ) -> Self {
         let mut rng = rand::thread_rng();
-        // Xavier/Glorot Initialization
         let limit = (6.0 / (in_features as f32 + units as f32)).sqrt();
         
         let mut kernel = vec![0.0; in_features * units];
@@ -54,7 +51,6 @@ impl SpikingDenseBPTT {
         let mut threshold = vec![0.0; units];
         
         for i in 0..units {
-            // Pilih pangkat bit-shift secara acak (2 hingga 5) sesuai dengan Oxide-JS
             let shift = rng.gen_range(2..6) as i32;
             beta[i] = 1.0 - (1.0 / (2.0f32).powi(shift));
             threshold[i] = rng.gen_range(threshold_range.0 .. threshold_range.1);
@@ -77,7 +73,6 @@ impl SpikingDenseBPTT {
         }
     }
 
-    /// Panggil fungsi ini SEBELUM memproses sebuah batch urutan teks (sequence) baru.
     pub fn reset_sequence(&mut self, batch_size: usize, time_steps: usize) {
         self.max_time_steps = time_steps;
         self.potentials = vec![0.0; batch_size * self.units];
@@ -86,18 +81,15 @@ impl SpikingDenseBPTT {
         self.history_spikes = vec![vec![]; time_steps];
     }
 
-    /// Forward pass di waktu `t`.
     pub fn compute_step(&mut self, inputs: &[f32], t: usize) -> Vec<f32> {
         let batch_size = inputs.len() / self.in_features;
         self.history_inputs[t] = inputs.to_vec();
 
-        // 1. Matriks Dot Product Add-Only
         let inputs_arr = ArrayView2::from_shape((batch_size, self.in_features), inputs).unwrap();
         let kernel_arr = ArrayView2::from_shape((self.in_features, self.units), &self.kernel).unwrap();
         
         let mut dot: Array2<f32> = dot_product_add_only(&inputs_arr, &kernel_arr);
 
-        // Tambahkan bias
         if self.use_bias {
             for b in 0..batch_size {
                 let mut row = dot.row_mut(b);
@@ -112,7 +104,6 @@ impl SpikingDenseBPTT {
 
         let dot_slice = dot.as_slice().unwrap();
         
-        // 2. Evaluasi Leaky Integrate and Fire (LIF)
         lifStep(
             &mut self.potentials,
             dot_slice,
@@ -122,15 +113,12 @@ impl SpikingDenseBPTT {
             &self.threshold
         );
 
-        // 3. Simpan state sesaat untuk keperluan BPTT
         self.history_potentials[t] = pot_at_t.clone();
         self.history_spikes[t] = out_spikes.clone();
 
         out_spikes
     }
 
-    /// Backpropagation Through Time (BPTT).
-    /// Mengembalikan error_wrt_inputs berukuran [time_steps][batch_size * in_features]
     pub fn learn_through_time(&mut self, error_sequence: &[Vec<f32>], learning_rate: f32) -> Vec<Vec<f32>> {
         if self.max_time_steps == 0 || self.history_inputs[0].is_empty() {
             panic!("Belum ada data memory di history_inputs! Jalankan compute_step() dulu.");
@@ -143,18 +131,15 @@ impl SpikingDenseBPTT {
         
         let mut error_wrt_inputs = vec![vec![0.0; batch_size * self.in_features]; self.max_time_steps];
 
-        // Loop mundur (Backpropagation through TIME)
         for t in (0..self.max_time_steps).rev() {
             let current_error_data = &error_sequence[t];
             let p_data = &self.history_potentials[t];
             let input_data = &self.history_inputs[t];
 
-            // A: Gabungkan sinyal spasial (dari luar/atas) dan temporal (dari masa depan t+1)
             for i in 0..masked_error_data.len() {
                 masked_error_data[i] = current_error_data[i] + temporal_error_data[i];
             }
 
-            // B: Terapkan fungsi Surrogate Gradient (hanya meloloskan error jika potensial dekat threshold)
             maskSurrogate(&mut masked_error_data, p_data, &self.threshold, window_size);
 
             // C: Terapkan Add-Only Delta Rule untuk mengupdate matriks kernel dan bias pada waktu `t`
@@ -172,7 +157,6 @@ impl SpikingDenseBPTT {
                 self.base.clip_max
             );
 
-            // D: Alirkan porsi error yang tembus ke waktu sebelumnya (t-1) melalui parameter kebocoran `beta`
             for b in 0..batch_size {
                 let offset = b * self.units;
                 for i in 0..self.units {
@@ -181,7 +165,6 @@ impl SpikingDenseBPTT {
                 }
             }
 
-            // E: Hitung gradien untuk input layer sebelumnya (error wrt inputs)
             for b in 0..batch_size {
                 let out_offset = b * self.units;
                 let in_offset = b * self.in_features;

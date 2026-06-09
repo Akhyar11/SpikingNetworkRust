@@ -1,9 +1,7 @@
-#[path = "../model/sentence_embedder.rs"]
-pub mod sentence_embedder;
-
 use SpikingNetworkRust::core::bpe::BPETokenizer;
 use SpikingNetworkRust::layers::base::Layer;
-use sentence_embedder::SpikingSentenceEmbedder;
+use SpikingNetworkRust::models::sentence_embedder::SpikingSentenceEmbedder;
+use SpikingNetworkRust::models::sentence_embedder;
 use std::fs::File;
 use std::io::BufReader;
 use std::time::Instant;
@@ -21,7 +19,6 @@ fn load_model(path: &str) -> (serde_json::Value, usize, usize) {
     let reader = BufReader::new(file);
     let model_data: serde_json::Value = serde_json::from_reader(reader).expect("Gagal memecah data model JSON");
 
-    // Jika model_data tidak menyimpan d_model dan max_seq_length, kita bisa ambil default (64 dan 128)
     let d_model = model_data.get("d_model").and_then(|v| v.as_u64()).unwrap_or(64) as usize;
     let max_seq_length = model_data.get("max_seq_length").and_then(|v| v.as_u64()).unwrap_or(128) as usize;
 
@@ -67,7 +64,7 @@ fn cosine_similarity(vec1: &[f32], vec2: &[f32]) -> f32 {
         return 0.0;
     }
     let sim = dot / (norm1.sqrt() * norm2.sqrt());
-    sim.max(0.0) // Hindari persentase negatif
+    sim.max(0.0)
 }
 
 fn pearson_correlation(x: &[f32], y: &[f32]) -> f32 {

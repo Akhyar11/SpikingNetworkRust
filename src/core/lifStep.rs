@@ -1,11 +1,5 @@
 use rayon::prelude::*;
 
-/// Operasi Leaky Integrate-and-Fire (LIF) Step secara Paralel.
-/// 
-/// Menyelesaikan persamaan:
-/// V[t] = (V[t-1] * beta) + dot_product_input
-/// spikes = V[t] > threshold ? 1.0 : 0.0
-/// V[t] = spikes > 0 ? 0.0 : V[t]  (Soft/Hard Reset)
 #[allow(non_snake_case)]
 pub fn lifStep(
     potentials: &mut [f32],
@@ -31,12 +25,11 @@ pub fn lifStep(
 
             let current_p = f32::min(1.0, (*p * b) + d);
             
-            // Simpan potensi sesaat (sebelum direset) untuk keperluan Surrogate Gradient
             *lp = current_p;
 
             if current_p >= t {
                 *s = 1.0;
-                *p = current_p - t; // Soft reset (mencegah information loss)
+                *p = current_p - t;
             } else {
                 *s = 0.0;
                 *p = current_p;

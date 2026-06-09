@@ -1,10 +1,7 @@
-#[path = "../model/sentence_embedder_simcse.rs"]
-pub mod sentence_embedder;
-
 use SpikingNetworkRust::core::bpe::BPETokenizer;
 use SpikingNetworkRust::layers::base::Layer;
-
-use sentence_embedder::SpikingSentenceEmbedder;
+use SpikingNetworkRust::models::sentence_embedder::SpikingSentenceEmbedder;
+use SpikingNetworkRust::models::sentence_embedder;
 use rand::Rng;
 use serde_json::json;
 use std::fs::File;
@@ -12,34 +9,40 @@ use std::io::{BufRead, BufReader, Write};
 use std::time::Instant;
 
 fn corrupt_sentence(sentence: &str) -> String {
-    sentence.to_string()
-}
+    let mut words: Vec<String> = sentence.split_whitespace().map(|s| s.to_string()).collect();
+    let mut rng = rand::thread_rng();
 
-fn create_hard_negative(sentence: &str, all_lines: &Vec<String>, _all_words: &Vec<String>, rng: &mut rand::rngs::ThreadRng) -> String {
-    use rand::Rng;
-    use rand::seq::SliceRandom;
-    
-    let words: Vec<&str> = sentence.split_whitespace().collect();
-    
-    let random_line = if !all_lines.is_empty() {
-        all_lines.choose(rng).unwrap().to_string()
-    } else {
-        String::new()
-    };
-    let random_words: Vec<&str> = random_line.split_whitespace().collect();
+    if words.len() > 3 {
+        let drop_count = 2.max((words.len() as f32 * 0.25) as usize);
+        for _ in 0..drop_count {
+            if words.len() <= 2 { break; }
 
-    if words.len() < 4 || random_words.len() < 4 {
-        return random_line;
+            let drop_type: f32 = rng.gen_range(0.0..1.0);
+            let target_idx = rng.gen_range(0..words.len());
+
+            if drop_type < 0.4 {
+                words.remove(target_idx);
+            } else if drop_type < 0.8 {
+                let target_word = &words[target_idx];
+                if target_word.len() > 3 {
+                    let char_idx = rng.gen_range(0..target_word.len());
+                    let mut new_word = String::new();
+                    for (i, c) in target_word.chars().enumerate() {
+                        if i != char_idx {
+                            new_word.push(c);
+                        }
+                    }
+                    words[target_idx] = new_word;
+                } else {
+                    words.remove(target_idx);
+                }
+            } else {
+                let dup = words[target_idx].clone();
+                words.insert(target_idx, dup);
+            }
+        }
     }
-
-    let split_idx_1 = words.len() / 2 + rng.gen_range(0..=1);
-    let split_idx_2 = random_words.len() / 2;
-
-    let mut cutmix = Vec::new();
-    cutmix.extend_from_slice(&words[0..split_idx_1.min(words.len())]);
-    cutmix.extend_from_slice(&random_words[split_idx_2..]);
-
-    cutmix.join(" ")
+    words.join(" ")
 }
 
 fn main() {
@@ -52,15 +55,12 @@ fn main() {
 
     let vocab_size = tokenizer.vocab_size();
     
-    // Hyperparameters (Metadata Pelatihan)
-    let d_model = 128; // Dikembalikan ke 128 agar cepat
-    let max_seq_length = 32; // Dikembalikan ke 32 agar cepat
-    let num_pairs = 32;       // Mengikuti referensi train_wiki_unsupervised.ts
-    let _batch_size = num_pairs * 2; // Total 64 kalimat per batch
-    let num_epochs = 1; // Dikembalikan ke 1 epoch
-    let min_words = 10;
+    let d_model = 256;
+    let max_seq_length = 32;
+    let num_pairs = 32;
+    let _batch_size = num_pairs * 2;
+    let num_epochs = 1;
 
-    // SNN Hyperparameters diletakkan di sini sesuai permintaan
     let snn_config = sentence_embedder::SNNConfig {
         d_model,
         max_seq_length,
@@ -73,53 +73,46 @@ fn main() {
         bptt_threshold_range: (0.5, 1.0),
     };
     
-    let margin = 0.2; // Margin untuk Contrastive Hebbian Loss
+    let margin = 0.2;
 
     println!("Inisialisasi SpikingSentenceEmbedder (Vocab: {}, D_Model: {})...", vocab_size, d_model);
     let mut embedder = SpikingSentenceEmbedder::new(tokenizer, vocab_size, snn_config);
     embedder.summary();
     
     println!("Menganalisa corpus untuk menghitung total step...");
-    
-    let mut all_lines = Vec::new();
+    let mut valid_lines_count = 0;
     if let Ok(file) = File::open(corpus_path) {
         let reader = BufReader::new(file);
         for line in reader.lines() {
             if let Ok(l) = line {
-                let trim = l.trim();
-                if !trim.is_empty() && trim.split_whitespace().count() >= min_words {
-                    all_lines.push(trim.to_string());
+                let q_line = l.trim();
+                if !q_line.is_empty() && q_line.len() >= 31 {
+                    valid_lines_count += 1;
                 }
             }
         }
-    } else {
-        panic!("Gagal membuka corpus di path: {}", corpus_path);
     }
-    
+    let mut all_lines = Vec::new();
+    let file = File::open(corpus_path).expect("Gagal membuka corpus.");
+    let reader = BufReader::new(file);
+    for line in reader.lines() {
+        if let Ok(l) = line {
+            let trim = l.trim();
+            if !trim.is_empty() && trim.len() >= 31 {
+                all_lines.push(trim.to_string());
+            }
+        }
+    }
     let valid_lines_count = all_lines.len();
     let max_steps_per_epoch = if valid_lines_count > 0 { valid_lines_count / num_pairs } else { 1 };
     println!("Total kalimat valid: {}, Estimasi {} step per epoch", valid_lines_count, max_steps_per_epoch);
-
-    // Kumpulkan semua kata untuk sintesis Hard Negative
-    let mut word_set = std::collections::HashSet::new();
-    for line in &all_lines {
-        for word in line.split_whitespace() {
-            word_set.insert(word.to_string());
-        }
-    }
-    let all_words: Vec<String> = word_set.into_iter().collect();
-    println!("Total kata unik untuk sintesis Hard Negative: {}", all_words.len());
 
     use rand::seq::SliceRandom;
     let mut rng = rand::thread_rng();
 
     let mut best_loss = f32::MAX;
     let mut patience_counter = 0;
-    let patience_limit = 2; // Berhenti jika loss tidak membaik selama 2 epoch berturut-turut
-
-    let mut global_step = 0;
-    let total_global_steps = max_steps_per_epoch * num_epochs;
-    let dropout_rate = 0.15; // Ditingkatkan ke 15% untuk memberikan variasi (noise) contrastive yang lebih kuat
+    let patience_limit = 2;
 
     for epoch in 1..=num_epochs {
         let mut step = 0;
@@ -134,27 +127,22 @@ fn main() {
         
         let mut q_texts = Vec::new();
         let mut p_texts = Vec::new();
-        let mut h_texts = Vec::new(); // Menyimpan Hard Negatives
         
         for q_line in &all_lines {
-            let p_line = corrupt_sentence(q_line); 
-            let h_line = create_hard_negative(q_line, &all_lines, &all_words, &mut rng);
+            let p_line = corrupt_sentence(q_line);
             
             q_texts.push(q_line.clone());
             p_texts.push(p_line);
-            h_texts.push(h_line);
 
             if q_texts.len() == num_pairs {
                 let mut batch_texts = Vec::new();
                 for q in &q_texts { batch_texts.push(q.as_str()); }
                 for p in &p_texts { batch_texts.push(p.as_str()); }
-                for h in &h_texts { batch_texts.push(h.as_str()); }
 
-                // Hitung decay berdasarkan GLOBAL STEP, bukan step per epoch!
-                let current_lr = 0.01 * f32::max(0.01, 1.0 - (global_step as f32 / total_global_steps as f32));
+                let current_lr = 0.01 * f32::max(0.01, 1.0 - (step as f32 / max_steps_per_epoch as f32));
                 embedder.set_learning_rate(current_lr);
 
-                let (loss1, loss2, loss3) = embedder.train_step(&batch_texts, num_pairs, margin, dropout_rate);
+                let (loss1, loss2, loss3) = embedder.train_step(&batch_texts, num_pairs, margin);
                 
                 epoch_loss_l1 += loss1;
                 epoch_loss_l2 += loss2;
@@ -162,9 +150,7 @@ fn main() {
 
                 q_texts.clear();
                 p_texts.clear();
-                h_texts.clear();
                 step += 1;
-                global_step += 1;
 
                 if step % 10 == 0 {
                     let elapsed_interval = last_log_time.elapsed();
@@ -202,12 +188,11 @@ fn main() {
         println!("\n\n[HASIL] Epoch {}/{} | Rata-rata L1 Loss: {:.4} | Rata-rata L2 Loss: {:.4} | Rata-rata BPTT Loss: {:.4} | Total Loss: {:.4} | Waktu Total: {:.2} s", 
                  epoch, num_epochs, final_avg_l1, final_avg_l2, final_avg_l3, current_total_loss, total_epoch_time);
 
-        // Early Stopping & Model Checkpointing
         if current_total_loss < best_loss {
             println!(">> Loss membaik dari {:.4} ke {:.4}. Menyimpan model terbaik sementara...", best_loss, current_total_loss);
             best_loss = current_total_loss;
             patience_counter = 0;
-            save_model(&embedder, model_save_path); // Simpan model di tiap titik terbaik
+            save_model(&embedder, model_save_path);
         } else {
             patience_counter += 1;
             println!(">> Loss tidak membaik (Patience: {}/{})", patience_counter, patience_limit);
@@ -224,25 +209,21 @@ fn main() {
 fn save_model(embedder: &SpikingSentenceEmbedder, path: &str) {
     let mut model_data = serde_json::Map::new();
     
-    // 0. Simpan Hyperparameter
     model_data.insert("d_model".to_string(), json!(embedder.attention.d_model));
     model_data.insert("max_seq_length".to_string(), json!(embedder.max_seq_length));
 
-    // 1. Simpan parameter Embedding
     let mut emb_params = serde_json::Map::new();
     for (name, data) in embedder.embedding.get_parameters() {
         emb_params.insert(name.to_string(), json!(data));
     }
     model_data.insert("embedding".to_string(), json!(emb_params));
 
-    // 2. Simpan parameter Attention
     let mut att_params = serde_json::Map::new();
     for (name, data) in embedder.attention.get_parameters() {
         att_params.insert(name.to_string(), json!(data));
     }
     model_data.insert("attention".to_string(), json!(att_params));
 
-    // 3. Simpan parameter Temporal Pooler (BPTT)
     let mut pool_params = serde_json::Map::new();
     for (name, data) in embedder.pooler.get_parameters() {
         pool_params.insert(name.to_string(), json!(data));

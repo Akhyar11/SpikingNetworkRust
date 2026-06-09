@@ -43,7 +43,6 @@ impl SpikingSelfAttention {
         let mut kernel_k = vec![0.0; d_model * d_model];
         let mut kernel_v = vec![0.0; d_model * d_model];
         
-        // Optimasi: Skalakan bobot awal agar neuron bisa 'spike' dengan mulus
         let scale = (d_model as f32).sqrt();
         let limit = (6.0 / (d_model as f32 * 2.0)).sqrt() * scale;
         
@@ -56,7 +55,7 @@ impl SpikingSelfAttention {
         let mut beta_qkv = vec![0.0; d_model];
         let mut threshold_qkv = vec![0.0; d_model];
         for i in 0..d_model {
-            let shift = rng.gen_range(2..8) as i32; // 2 to 7 (Math.floor(2 + Math.random() * 6))
+            let shift = rng.gen_range(2..8) as i32;
             beta_qkv[i] = 1.0 - (1.0 / (1 << shift) as f32);
             threshold_qkv[i] = rng.gen_range(threshold_range.0 .. threshold_range.1);
         }
@@ -95,7 +94,6 @@ impl SpikingSelfAttention {
         self.potentials_scores = vec![0.0; batch_size * self.sequence_length * self.sequence_length];
     }
 
-    /// Linear Attention: Q * (K^T * V) untuk mengatasi O(N^2)
     pub fn forward(&mut self, inputs: &[f32], actual_lengths: &[usize]) -> Vec<f32> {
         let batch_seq = inputs.len() / self.d_model;
         let batch = batch_seq / self.sequence_length;
@@ -104,12 +102,10 @@ impl SpikingSelfAttention {
             panic!("Jumlah input tidak sesuai dengan kelipatan sequence_length!");
         }
 
-        // ALWAYS reset state on every forward pass to prevent potentials leaking across batches
         self.reset_state(batch);
 
         self.last_inputs = Some(inputs.to_vec());
 
-        // 1. Proyeksi Spasial Spiking
         let inputs_arr = ArrayView2::from_shape((batch_seq, self.d_model), inputs).unwrap();
         let kq_arr = ArrayView2::from_shape((self.d_model, self.d_model), &self.kernel_q).unwrap();
         let kk_arr = ArrayView2::from_shape((self.d_model, self.d_model), &self.kernel_k).unwrap();
@@ -119,11 +115,10 @@ impl SpikingSelfAttention {
         let dot_k = dot_product(&inputs_arr, &kk_arr);
         let dot_v = dot_product(&inputs_arr, &kv_arr);
 
-        // 2. Evaluasi Potensial Membran dan Ekstrak Spike (S_Q, S_K, S_V)
         let mut sq = vec![0.0; batch_seq * self.d_model];
         let mut sk = vec![0.0; batch_seq * self.d_model];
         let mut sv = vec![0.0; batch_seq * self.d_model];
-        let mut dummy = vec![0.0; batch_seq * self.d_model]; // Temp array untuk potensial sesaat yang tidak direkam di memori state
+        let mut dummy = vec![0.0; batch_seq * self.d_model];
 
         lifStep(&mut self.potentials_q, dot_q.as_slice().unwrap(), &mut sq, &mut dummy, &self.beta_qkv, &self.threshold_qkv);
         lifStep(&mut self.potentials_k, dot_k.as_slice().unwrap(), &mut sk, &mut dummy, &self.beta_qkv, &self.threshold_qkv);
@@ -131,7 +126,6 @@ impl SpikingSelfAttention {
 
         let _out_data = vec![0.0; batch_seq * self.d_model];
 
-        // 3. Menghitung Skor Kecocokan (SQ dot SK^T) menggunakan bit-wise addition O(N^2)
         let mut match_scores = vec![0.0; batch * self.sequence_length * self.sequence_length];
         
         for b in 0..batch {
@@ -172,7 +166,6 @@ impl SpikingSelfAttention {
             }
         }
 
-        // 4. Pengganti Softmax: Lewatkan skor kecocokan ke lapisan LIF
         let mut s_scores_data = vec![0.0; batch * self.sequence_length * self.sequence_length];
         let mut dummy_lp_scores = vec![0.0; batch * self.sequence_length * self.sequence_length];
         lifStep(&mut self.potentials_scores, &match_scores, &mut s_scores_data, &mut dummy_lp_scores, &self.beta_scores, &self.threshold_scores);
@@ -203,7 +196,6 @@ impl SpikingSelfAttention {
             }
         }
 
-        // Opsional: Batasi output menjadi biner (spike) jika layer berikutnya menuntut binary matrix (sesuai JS)
         for x in out_data.iter_mut() {
             if *x > 1.0 { *x = 1.0; }
         }
@@ -230,7 +222,6 @@ impl SpikingSelfAttention {
                     if in_val > 0.0 {
                         let k_offset = i * self.d_model;
                         for d in 0..self.d_model {
-                            // Dopamin di-set 0 karena inisialisasi awal sudah di-scale up, tidak perlu revive paksa
                             let dopamine = 0.0;
                             let delta = (lr * error_signal[offset + d] * in_val) + dopamine;
                             

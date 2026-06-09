@@ -1,10 +1,7 @@
-#[path = "../model/sentence_embedder.rs"]
-pub mod sentence_embedder;
-
 use SpikingNetworkRust::core::bpe::BPETokenizer;
 use SpikingNetworkRust::layers::base::Layer;
-
-use sentence_embedder::SpikingSentenceEmbedder;
+use SpikingNetworkRust::models::sentence_embedder::SpikingSentenceEmbedder;
+use SpikingNetworkRust::models::sentence_embedder;
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::{BufReader, Write};
@@ -26,7 +23,6 @@ fn main() {
     let tokenizer = BPETokenizer::load(vocab_path);
     let vocab_size = tokenizer.vocab_size();
 
-    // Hyperparameters
     let d_model = 128;
     let max_seq_length = 32;
     let num_pairs = 32; 

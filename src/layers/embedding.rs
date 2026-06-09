@@ -23,9 +23,8 @@ pub struct SpikingEmbedding {
 impl SpikingEmbedding {
     pub fn new(input_dim: usize, output_dim: usize, learning_rate: f32, clip_min: f32, clip_max: f32) -> Self {
         let mut rng = rand::thread_rng();
-        // Xavier/Glorot Initialization
         let limit = (6.0 / (input_dim as f32 + output_dim as f32)).sqrt();
-        let scale_factor = (input_dim as f32).sqrt(); // Skalakan seperti di TypeScript
+        let scale_factor = (input_dim as f32).sqrt();
         let mut weights = vec![0.0; input_dim * output_dim];
         for w in weights.iter_mut() {
             *w = rng.gen_range(-limit..limit) * scale_factor;
@@ -34,7 +33,7 @@ impl SpikingEmbedding {
         let mut beta = vec![0.0; output_dim];
         let mut threshold = vec![0.0; output_dim];
         for i in 0..output_dim {
-            let shift = rng.gen_range(2..8) as i32; // 2 to 7 (equivalent to Math.floor(2 + Math.random() * 6))
+            let shift = rng.gen_range(2..8) as i32;
             beta[i] = 1.0 - (1.0 / (1 << shift) as f32);
             threshold[i] = rng.gen_range(0.01..0.1);
         }
@@ -104,8 +103,6 @@ impl Layer for SpikingEmbedding {
 }
 
 impl SpikingEmbedding {
-    /// Forward pass:
-    /// `inputs`: Array 1D yang berisi urutan Token ID.
     pub fn reset_state(&mut self) {
         for p in self.potentials.iter_mut() { *p = 0.0; }
         for lp in self.last_potentials.iter_mut() { *lp = 0.0; }
@@ -113,11 +110,9 @@ impl SpikingEmbedding {
         self.last_spikes = None;
     }
 
-    /// Mengembalikan flat matrix spikes dengan bentuk `[batch_size, output_dim]`.
     pub fn forward(&mut self, inputs: &[f32]) -> Vec<f32> {
         let batch_size = inputs.len();
         
-        // Ensure potentials buffer shape
         let required_size = batch_size * self.output_dim;
         if self.potentials.len() != required_size {
             self.potentials = vec![0.0; required_size];
@@ -126,7 +121,6 @@ impl SpikingEmbedding {
 
         let mut dot_data = vec![0.0; required_size];
 
-        // Simpan input untuk backward pass
         self.cached_inputs = Some(inputs.to_vec());
 
         dot_data.par_chunks_mut(self.output_dim)
@@ -157,8 +151,6 @@ impl SpikingEmbedding {
         output_spikes
     }
 
-    /// Backward pass:
-    /// `error_signal`: Matriks gradien dari layer selanjutnya (shape: `[batch_size, output_dim]`)
     pub fn backward(&mut self, error_signal: &[f32], b_matrix: Option<&[f32]>) {
         if let Some(inputs) = &self.cached_inputs {
             let mut e_hidden = vec![0.0; error_signal.len()];
@@ -180,7 +172,6 @@ impl SpikingEmbedding {
             let mut masked_err = e_hidden.to_vec();
             crate::core::surrogate::maskSurrogate(&mut masked_err, &self.last_potentials, &self.threshold, 1.0);
             
-            // Kita panggil fungsi applyEmbeddingDelta murni dari core
             applyEmbeddingDelta(
                 &mut self.weights,
                 inputs,

@@ -1,8 +1,8 @@
-use SpikingNetworkRust::core::bpe::BPETokenizer;
-use SpikingNetworkRust::layers::embedding::SpikingEmbedding;
-use SpikingNetworkRust::layers::self_attention::SpikingSelfAttention;
-use SpikingNetworkRust::layers::dense_bptt::SpikingDenseBPTT;
-use SpikingNetworkRust::layers::base::Layer;
+use crate::core::bpe::BPETokenizer;
+use crate::layers::embedding::SpikingEmbedding;
+use crate::layers::self_attention::SpikingSelfAttention;
+use crate::layers::dense_bptt::SpikingDenseBPTT;
+use crate::layers::base::Layer;
 
 #[derive(Clone, Copy)]
 pub struct SNNConfig {
@@ -163,7 +163,7 @@ impl SpikingSentenceEmbedder {
 
         // Tahap 3: L2 Normalization
         for b in 0..batch_size {
-            let mut sum_sq = 0.0;
+            let mut sum_sq: f32 = 0.0;
             for val in &final_embeddings[b] {
                 sum_sq += val * val;
             }
@@ -221,7 +221,7 @@ impl SpikingSentenceEmbedder {
         // --------------------------------
 
         let mut err_emb_data = vec![0.0; batch_seq * d_model];
-        let loss1 = SpikingNetworkRust::core::contrastiveHebbian::contrastiveHebbian(
+        let loss1 = crate::core::contrastiveHebbian::contrastiveHebbian(
             &spikes1, &mut err_emb_data, num_pairs, self.max_seq_length, d_model, margin, &actual_lengths
         );
         self.embedding.backward(&err_emb_data, None);
@@ -246,7 +246,7 @@ impl SpikingSentenceEmbedder {
         // --------------------------------
 
         let mut err_att_data = vec![0.0; batch_seq * d_model];
-        let loss2 = SpikingNetworkRust::core::contrastiveHebbian::contrastiveHebbian(
+        let loss2 = crate::core::contrastiveHebbian::contrastiveHebbian(
             &spikes2, &mut err_att_data, num_pairs, self.max_seq_length, d_model, margin, &actual_lengths
         );
         self.attention.learn_attention(&err_att_data, &actual_lengths);
@@ -293,7 +293,7 @@ impl SpikingSentenceEmbedder {
 
         let mut error_final_data = vec![0.0; batch_size * self.pooler.units];
         let dummy_lengths = vec![1; batch_size]; // Karena sudah dipooling jadi 1 step
-        let pooler_loss = SpikingNetworkRust::core::contrastiveHebbian::contrastiveHebbian(
+        let pooler_loss = crate::core::contrastiveHebbian::contrastiveHebbian(
             &normalized_out_data, &mut error_final_data, num_pairs, 1, self.pooler.units, margin, &dummy_lengths
         );
 

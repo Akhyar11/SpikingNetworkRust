@@ -1,10 +1,7 @@
-#[path = "../model/sentence_embedder.rs"]
-pub mod sentence_embedder;
-
 use SpikingNetworkRust::core::bpe::BPETokenizer;
 use SpikingNetworkRust::layers::base::Layer;
-
-use sentence_embedder::SpikingSentenceEmbedder;
+use SpikingNetworkRust::models::sentence_embedder::SpikingSentenceEmbedder;
+use SpikingNetworkRust::models::sentence_embedder;
 use serde_json::Value;
 use std::env;
 use std::fs;
@@ -25,7 +22,6 @@ fn main() {
     let tokenizer = BPETokenizer::load(vocab_path);
     let vocab_size = tokenizer.vocab_size();
 
-    // Load Weights
     let model_data_str = fs::read_to_string(model_save_path).expect("Gagal memuat model");
     let model_data: Value = serde_json::from_str(&model_data_str).unwrap();
 
@@ -84,6 +80,5 @@ fn main() {
         dot / (norm_a.sqrt() * norm_b.sqrt())
     };
 
-    // Print hanya angka agar mudah dibaca JS
     println!("{:.4}", sim);
 }
