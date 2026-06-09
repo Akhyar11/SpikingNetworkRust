@@ -86,14 +86,14 @@ fn pearson_correlation(x: &[f32], y: &[f32]) -> f32 {
 
 fn main() {
     let vocab_path = "experiment/file_model/vocab.json";
-    let model_save_path = "experiment/file_model/saved_model_human.json";
+    let model_save_path = std::env::args().nth(1).unwrap_or_else(|| "experiment/file_model/saved_model_human.json".to_string());
     let eval_dataset_path = "experiment/file_model/sts-b_valid.json";
 
     println!("Memuat tokenizer...");
     let tokenizer = BPETokenizer::load(vocab_path);
     let vocab_size = tokenizer.vocab_size();
     println!("Memuat bobot parameter dari disk ({})...", model_save_path);
-    let (model_data, d_model, max_seq_length) = load_model(model_save_path);
+    let (model_data, d_model, max_seq_length) = load_model(&model_save_path);
 
     println!("Inisialisasi arsitektur jaringan SpikingSentenceEmbedder (D_Model: {}, Max_Seq: {})...", d_model, max_seq_length);
     let snn_config = sentence_embedder::SNNConfig {

@@ -1,0 +1,14 @@
+Memuat tokenizer...
+Memuat model dari disk (experiment/file_model/saved_model_simcse.json)...
+=============================================
+     EVALUASI GENERALISASI OUT-OF-DOMAIN     
+=============================================
+ STS-12   | Pairs: 3108  | Pearson: 0.4760 | Time: 7.97s
+ STS-13   | Pairs: 1500  | Pearson: 0.4484 | Time: 3.74s
+ STS-14   | Pairs: 3750  | Pearson: 0.4821 | Time: 9.44s
+ STS-15   | Pairs: 3000  | Pearson: 0.4972 | Time: 7.19s
+ STS-16   | Pairs: 1186  | Pearson: 0.3306 | Time: 2.88s
+ SICK-R   | Pairs: 9927  | Pearson: 0.3874 | Time: 23.84s
+ STS-B    | Pairs: 1500  | Pearson: 0.6416 | Time: 3.70s
+=============================================
+Hasil lengkap disimpan di: experiment/file_model/eval_all_datasets_metrics.json

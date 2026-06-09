@@ -41,15 +41,15 @@ fn create_hard_negative(sentence: &str, all_lines: &Vec<String>, _all_words: &Ve
 
 fn main() {
     let vocab_path = "experiment/file_model/vocab.json";
-    let corpus_path = "/home/akhyar/Dokumen/Code/NODE_JS/penelitian_model_bahasa_dengan_spiking/dataset/mini_corpus.txt";
-    let model_save_path = "experiment/file_model/saved_model.json";
+    let corpus_path = "/home/akhyar/Dokumen/Code/NODE_JS/penelitian_model_bahasa_dengan_spiking/dataset/mini_corpus20mb.txt";
+    let model_save_path = "experiment/file_model/saved_model_simcse.json";
 
     println!("Memuat tokenizer dari {}...", vocab_path);
     let tokenizer = BPETokenizer::load(vocab_path);
 
     let vocab_size = tokenizer.vocab_size();
     
-    let d_model = 128;
+    let d_model = 64;
     let max_seq_length = 32;
     let num_pairs = 32;
     let _batch_size = num_pairs * 2;

@@ -1,0 +1,63 @@
+Memuat tokenizer...
+Memuat bobot parameter dari disk (experiment/file_model/saved_model_distil.json)...
+Inisialisasi arsitektur jaringan SpikingSentenceEmbedder (D_Model: 64, Max_Seq: 32)...
+Membuka dataset evaluasi dari experiment/file_model/sts-b_valid.json...
+Mulai Evaluasi SNN (Total: 1500 pasang kalimat)...
+  Progres:  200/1500 pasang dievaluasi.
+  Progres:  400/1500 pasang dievaluasi.
+  Progres:  600/1500 pasang dievaluasi.
+  Progres:  800/1500 pasang dievaluasi.
+  Progres: 1000/1500 pasang dievaluasi.
+  Progres: 1200/1500 pasang dievaluasi.
+  Progres: 1400/1500 pasang dievaluasi.
+
+=============================================
+             HASIL EVALUASI SNN              
+=============================================
+ Total Pasangan       : 1500
+ Waktu Inferensi      : 3.80 detik
+ Kecepatan            : 2.54 ms / pasang
+ Pearson (STS-B)      : 0.6205
+---------------------------------------------
+     METRIK EFISIENSI ENERGI (PER KALIMAT)   
+---------------------------------------------
+ Rata-rata Spikes     : 604
+ SNN AC Ops (SOPs)    : 77309
+ Transformer MACs     : 10223616 (Estimasi 6 layer)
+ Rasio Penghematan    : 132.24x lebih sedikit operasi aktif
+=============================================
+
+=============================================
+             CONTOH PREDIKSI                 
+=============================================
+Sampel 1
+  Kalimat 1: A man with a hard hat is dancing.
+  Kalimat 2: A man wearing a hard hat is dancing.
+  Target Aktual (0-1): 1.0000
+  Prediksi Cosine (0-1): 0.8881
+---------------------------------------------
+Sampel 2
+  Kalimat 1: A young child is riding a horse.
+  Kalimat 2: A child is riding a horse.
+  Target Aktual (0-1): 0.9500
+  Prediksi Cosine (0-1): 0.9251
+---------------------------------------------
+Sampel 3
+  Kalimat 1: A man is feeding a mouse to a snake.
+  Kalimat 2: The man is feeding a mouse to the snake.
+  Target Aktual (0-1): 1.0000
+  Prediksi Cosine (0-1): 0.7775
+---------------------------------------------
+Sampel 4
+  Kalimat 1: A woman is playing the guitar.
+  Kalimat 2: A man is playing guitar.
+  Target Aktual (0-1): 0.4800
+  Prediksi Cosine (0-1): 0.4578
+---------------------------------------------
+Sampel 5
+  Kalimat 1: A woman is playing the flute.
+  Kalimat 2: A man is playing a flute.
+  Target Aktual (0-1): 0.5500
+  Prediksi Cosine (0-1): 0.6015
+---------------------------------------------
+Metrik evaluasi berhasil disimpan ke experiment/file_model/eval_metrics.json
