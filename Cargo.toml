@@ -25,3 +25,7 @@ path = "experiment/test_sentence_versus/main.rs"
 [[bin]]
 name = "train_simcse"
 path = "experiment/train_simcse/main.rs"
+
+[[bin]]
+name = "train_distillation"
+path = "experiment/train_distillation/main.rs"

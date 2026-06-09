@@ -11,10 +11,35 @@ use std::fs::File;
 use std::io::{BufRead, BufReader, Write};
 use std::time::Instant;
 
-// Fungsi Trik Unsupervised SimCSE: P adalah teks yang identik dengan Q!
-// Perbedaan/variasi diberikan dari Dropout di dalam network, bukan di teks.
 fn corrupt_sentence(sentence: &str) -> String {
     sentence.to_string()
+}
+
+fn create_hard_negative(sentence: &str, all_lines: &Vec<String>, _all_words: &Vec<String>, rng: &mut rand::rngs::ThreadRng) -> String {
+    use rand::Rng;
+    use rand::seq::SliceRandom;
+    
+    let words: Vec<&str> = sentence.split_whitespace().collect();
+    
+    let random_line = if !all_lines.is_empty() {
+        all_lines.choose(rng).unwrap().to_string()
+    } else {
+        String::new()
+    };
+    let random_words: Vec<&str> = random_line.split_whitespace().collect();
+
+    if words.len() < 4 || random_words.len() < 4 {
+        return random_line;
+    }
+
+    let split_idx_1 = words.len() / 2 + rng.gen_range(0..=1);
+    let split_idx_2 = random_words.len() / 2;
+
+    let mut cutmix = Vec::new();
+    cutmix.extend_from_slice(&words[0..split_idx_1.min(words.len())]);
+    cutmix.extend_from_slice(&random_words[split_idx_2..]);
+
+    cutmix.join(" ")
 }
 
 fn main() {
@@ -28,11 +53,11 @@ fn main() {
     let vocab_size = tokenizer.vocab_size();
     
     // Hyperparameters (Metadata Pelatihan)
-    let d_model = 128;
-    let max_seq_length = 32; // Diubah sesuai permintaan
+    let d_model = 128; // Dikembalikan ke 128 agar cepat
+    let max_seq_length = 32; // Dikembalikan ke 32 agar cepat
     let num_pairs = 32;       // Mengikuti referensi train_wiki_unsupervised.ts
     let _batch_size = num_pairs * 2; // Total 64 kalimat per batch
-    let num_epochs = 1;
+    let num_epochs = 1; // Dikembalikan ke 1 epoch
     let min_words = 10;
 
     // SNN Hyperparameters diletakkan di sini sesuai permintaan
@@ -75,6 +100,16 @@ fn main() {
     let max_steps_per_epoch = if valid_lines_count > 0 { valid_lines_count / num_pairs } else { 1 };
     println!("Total kalimat valid: {}, Estimasi {} step per epoch", valid_lines_count, max_steps_per_epoch);
 
+    // Kumpulkan semua kata untuk sintesis Hard Negative
+    let mut word_set = std::collections::HashSet::new();
+    for line in &all_lines {
+        for word in line.split_whitespace() {
+            word_set.insert(word.to_string());
+        }
+    }
+    let all_words: Vec<String> = word_set.into_iter().collect();
+    println!("Total kata unik untuk sintesis Hard Negative: {}", all_words.len());
+
     use rand::seq::SliceRandom;
     let mut rng = rand::thread_rng();
 
@@ -84,7 +119,7 @@ fn main() {
 
     let mut global_step = 0;
     let total_global_steps = max_steps_per_epoch * num_epochs;
-    let dropout_rate = 0.1; // 10% neuron spikes will be dropped randomly
+    let dropout_rate = 0.15; // Ditingkatkan ke 15% untuk memberikan variasi (noise) contrastive yang lebih kuat
 
     for epoch in 1..=num_epochs {
         let mut step = 0;
@@ -99,18 +134,21 @@ fn main() {
         
         let mut q_texts = Vec::new();
         let mut p_texts = Vec::new();
+        let mut h_texts = Vec::new(); // Menyimpan Hard Negatives
         
         for q_line in &all_lines {
-            // P adalah Q yang persis sama, perbedaan akan didapat dari Dropout!
             let p_line = corrupt_sentence(q_line); 
+            let h_line = create_hard_negative(q_line, &all_lines, &all_words, &mut rng);
             
             q_texts.push(q_line.clone());
             p_texts.push(p_line);
+            h_texts.push(h_line);
 
             if q_texts.len() == num_pairs {
                 let mut batch_texts = Vec::new();
                 for q in &q_texts { batch_texts.push(q.as_str()); }
                 for p in &p_texts { batch_texts.push(p.as_str()); }
+                for h in &h_texts { batch_texts.push(h.as_str()); }
 
                 // Hitung decay berdasarkan GLOBAL STEP, bukan step per epoch!
                 let current_lr = 0.01 * f32::max(0.01, 1.0 - (global_step as f32 / total_global_steps as f32));
@@ -124,6 +162,7 @@ fn main() {
 
                 q_texts.clear();
                 p_texts.clear();
+                h_texts.clear();
                 step += 1;
                 global_step += 1;
 

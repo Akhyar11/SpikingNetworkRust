@@ -291,7 +291,101 @@ impl SpikingSentenceEmbedder {
         (loss1, loss2, pooler_loss)
     }
 
+    /// Metode latihan supervised menggunakan Hebbian Distillation (Pull proporsional target, Push proporsional 1-target)
+    pub fn train_step_distill(&mut self, texts: &[&str], targets: &[f32], margin: f32) -> (f32, f32, f32) {
+        self.zero_pad_token();
+        let batch_size = texts.len(); // Ini harus kelipatan 2 (berisi pasangan Q dan P)
+        let num_pairs = batch_size / 2;
+        
+        self.embedding.reset_state();
+        self.attention.reset_state(batch_size);
+        self.pooler.reset_sequence(batch_size, self.max_seq_length);
+
+        let mut tokenized_batch = Vec::with_capacity(batch_size * self.max_seq_length);
+        let mut actual_lengths = vec![0; batch_size];
+        for (b, text) in texts.iter().enumerate() {
+            let mut tokens = self.tokenizer.encode(&text.to_lowercase());
+            actual_lengths[b] = tokens.len().min(self.max_seq_length);
+            if tokens.len() > self.max_seq_length { tokens.truncate(self.max_seq_length); }
+            let mut tokens_f32: Vec<f32> = tokens.into_iter().map(|t| t as f32).collect();
+            while tokens_f32.len() < self.max_seq_length { tokens_f32.push(0.0); }
+            tokenized_batch.extend(tokens_f32);
+        }
+
+        self.cached_actual_lengths = Some(actual_lengths.clone());
+
+        let batch_seq = batch_size * self.max_seq_length;
+        let d_model = self.embedding.output_dim;
+
+        // LAYER 1 FORWARD & BACKWARD
+        let spikes1 = self.embedding.forward(&tokenized_batch);
+        let mut err_emb_data = vec![0.0; batch_seq * d_model];
+        let loss1 = SpikingNetworkRust::core::contrastiveHebbian::distillationHebbian(
+            &spikes1, &mut err_emb_data, num_pairs, self.max_seq_length, d_model, margin, &actual_lengths, targets
+        );
+        self.embedding.backward(&err_emb_data, None);
+
+        // LAYER 2 FORWARD & BACKWARD
+        let att_spikes = self.attention.forward(&spikes1, &actual_lengths);
+        let mut spikes2 = vec![0.0; batch_seq * d_model];
+        for i in 0..(batch_seq * d_model) {
+            let att_val = if att_spikes[i] > 0.5 { 1.0 } else { 0.0 };
+            let combined = spikes1[i] + att_val;
+            spikes2[i] = if combined > 0.5 { 1.0 } else { 0.0 };
+        }
+
+        let mut err_att_data = vec![0.0; batch_seq * d_model];
+        let loss2 = SpikingNetworkRust::core::contrastiveHebbian::distillationHebbian(
+            &spikes2, &mut err_att_data, num_pairs, self.max_seq_length, d_model, margin, &actual_lengths, targets
+        );
+        self.attention.learn_attention(&err_att_data, &actual_lengths);
+
+        // LAYER 3 FORWARD (BPTT)
+        let mut final_out_data = vec![0.0; batch_size * self.pooler.units];
+        for t in 0..self.max_seq_length {
+            let mut step_input = vec![0.0; batch_size * self.pooler.in_features];
+            for b in 0..batch_size {
+                if t < actual_lengths[b] {
+                    let base_idx = (b * self.max_seq_length + t) * self.pooler.in_features;
+                    for i in 0..self.pooler.in_features {
+                        step_input[b * self.pooler.in_features + i] = spikes2[base_idx + i];
+                    }
+                }
+            }
+            let out_spikes = self.pooler.compute_step(&step_input, t);
+            for b in 0..batch_size {
+                if t < actual_lengths[b] {
+                    let offset = b * self.pooler.units;
+                    for i in 0..self.pooler.units { final_out_data[offset + i] += out_spikes[offset + i]; }
+                }
+            }
+        }
+
+        // L2 NORMALIZATION & LAYER 3 BACKWARD
+        let mut normalized_out_data = vec![0.0; batch_size * self.pooler.units];
+        for b in 0..batch_size {
+            let mut sum_sq = 0.0;
+            let offset = b * self.pooler.units;
+            for i in 0..self.pooler.units { sum_sq += final_out_data[offset + i] * final_out_data[offset + i]; }
+            let norm = sum_sq.sqrt().max(1e-8);
+            for i in 0..self.pooler.units { normalized_out_data[offset + i] = final_out_data[offset + i] / norm; }
+        }
+
+        let mut error_final_data = vec![0.0; batch_size * self.pooler.units];
+        let dummy_lengths = vec![1; batch_size];
+        
+        let pooler_loss = SpikingNetworkRust::core::contrastiveHebbian::distillationHebbian(
+            &normalized_out_data, &mut error_final_data, num_pairs, 1, self.pooler.units, margin, &dummy_lengths, targets
+        );
+
+        // TEMPORAL POOLER DIBEKUKAN SEBAGAI INTEGRATOR MURNI
+        // (Sama seperti skenario SimCSE asli)
+
+        (loss1, loss2, pooler_loss)
+    }
+
     /// Menampilkan keseluruhan topologi SNN
+
     pub fn summary(&self) {
         println!("=============================================");
         println!("           Spiking Sentence Embedder         ");
