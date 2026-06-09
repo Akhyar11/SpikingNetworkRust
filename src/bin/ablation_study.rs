@@ -22,10 +22,28 @@ struct STSPair {
     score: f32,
 }
 
+fn apply_init_weights(embedder: &mut SpikingSentenceEmbedder, init_data: &serde_json::Value) {
+    for group in &["embedding", "attention", "pooler"] {
+        let layer: &mut dyn Layer = match *group {
+            "embedding" => &mut embedder.embedding,
+            "attention" => &mut embedder.attention,
+            _           => &mut embedder.pooler,
+        };
+        if let Some(obj) = init_data.get(group).and_then(|v| v.as_object()) {
+            for (k, v) in obj {
+                if let Ok(data) = serde_json::from_value::<Vec<f32>>(v.clone()) {
+                    let _ = layer.set_parameter(k, &data);
+                }
+            }
+        }
+    }
+}
+
 fn train_model(
     tokenizer: BPETokenizer,
     vocab_size: usize,
     dataset: &[DistillationPair],
+    init_data: &serde_json::Value,
     d_model: usize,
     max_seq_length: usize,
     use_attention: bool,
@@ -43,6 +61,8 @@ fn train_model(
     };
 
     let mut embedder = SpikingSentenceEmbedder::new(tokenizer, vocab_size, snn_config);
+    // Terapkan bobot inisialisasi bersama — eliminasi bias inisialisasi
+    apply_init_weights(&mut embedder, init_data);
     embedder.set_use_attention(use_attention);
 
     let num_pairs = 32;
@@ -148,6 +168,14 @@ fn main() {
 
     println!("Total training pairs: {}, Eval pairs: {}", dataset.len(), eval_data.len());
 
+    // Muat bobot inisialisasi bersama
+    let init_path = "experiment/file_model/init_weights.json";
+    println!("Memuat bobot inisialisasi dari {}...", init_path);
+    let init_file = File::open(init_path)
+        .expect("init_weights.json tidak ditemukan! Jalankan: cargo run --release --bin generate_init_weights");
+    let init_data: serde_json::Value = serde_json::from_reader(BufReader::new(init_file)).unwrap();
+    println!("✓ Semua varian akan mulai dari bobot inisialisasi yang IDENTIK.\n");
+
     // Definisi semua variasi ablasi
     let ablation_configs: Vec<(&str, usize, bool)> = vec![
         ("T=16 (with-attention)",  16, true),
@@ -173,6 +201,7 @@ fn main() {
             tokenizer.clone_with_same_vocab(),
             vocab_size,
             &dataset,
+            &init_data,
             64,
             *max_seq_length,
             *use_attention,
