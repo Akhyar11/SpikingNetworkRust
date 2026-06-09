@@ -196,4 +196,14 @@ impl BPETokenizer {
     pub fn bos_id(&self) -> u32 {
         *self.vocab.get(BOS_TOKEN).unwrap_or(&0)
     }
+
+    pub fn clone_with_same_vocab(&self) -> Self {
+        BPETokenizer {
+            vocab: self.vocab.clone(),
+            reverse_vocab: self.reverse_vocab.clone(),
+            merges: self.merges.clone(),
+            merge_ranks: self.merge_ranks.clone(),
+            config: self.config.clone(),
+        }
+    }
 }

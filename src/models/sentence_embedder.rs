@@ -34,6 +34,7 @@ pub struct SpikingSentenceEmbedder {
     pub max_seq_length: usize,
     pub cached_actual_lengths: Option<Vec<usize>>,
     pub metrics: SNNMetrics,
+    pub use_attention: bool,
 }
 
 impl SpikingSentenceEmbedder {
@@ -84,7 +85,12 @@ impl SpikingSentenceEmbedder {
             max_seq_length: config.max_seq_length,
             cached_actual_lengths: None,
             metrics: SNNMetrics::default(),
+            use_attention: true,
         }
+    }
+
+    pub fn set_use_attention(&mut self, val: bool) {
+        self.use_attention = val;
     }
 
     fn zero_pad_token(&mut self) {
@@ -131,17 +137,17 @@ impl SpikingSentenceEmbedder {
         self.metrics.embedding_spikes += emb_spikes;
         self.metrics.total_sops += emb_spikes * self.attention.d_model * 3;
 
-        let att_out = self.attention.forward(&emb_out, &actual_lengths);
-        let mut att_spikes = 0;
-        for &val in &att_out {
-            if val > 0.0 { att_spikes += 1; }
-        }
-        self.metrics.attention_spikes += att_spikes;
-
-        let mut aggregated_features = vec![0.0; batch_seq * d_model];
-        for i in 0..(batch_seq * d_model) {
-            aggregated_features[i] = emb_out[i] + att_out[i];
-        }
+        let aggregated_features = if self.use_attention {
+            let att_out = self.attention.forward(&emb_out, &actual_lengths);
+            let mut att_spikes = 0;
+            for &val in &att_out { if val > 0.0 { att_spikes += 1; } }
+            self.metrics.attention_spikes += att_spikes;
+            let mut agg = vec![0.0; batch_seq * d_model];
+            for i in 0..(batch_seq * d_model) { agg[i] = emb_out[i] + att_out[i]; }
+            agg
+        } else {
+            emb_out.clone()
+        };
 
         self.pooler.reset_sequence(batch_size, self.max_seq_length);
         let mut final_embeddings = vec![vec![0.0; self.pooler.units]; batch_size];

@@ -1,0 +1,36 @@
+{
+  "ablation_study": {
+    "T=16 (with-attention)": {
+      "average_sops": 80168.02133333334,
+      "max_seq_length": 16,
+      "ms_per_pair": 0.5578115833333332,
+      "pearson_correlation": 0.5587368011474609,
+      "train_time_seconds": 2.608396962,
+      "use_attention": true
+    },
+    "T=32 (no-attention)": {
+      "average_sops": 103899.904,
+      "max_seq_length": 32,
+      "ms_per_pair": 0.8081304526666666,
+      "pearson_correlation": 0.5906158089637756,
+      "train_time_seconds": 3.518438899,
+      "use_attention": false
+    },
+    "T=32 (with-attention)": {
+      "average_sops": 104508.416,
+      "max_seq_length": 32,
+      "ms_per_pair": 0.9523116213333332,
+      "pearson_correlation": 0.5476648807525635,
+      "train_time_seconds": 3.478042988,
+      "use_attention": true
+    },
+    "T=64 (with-attention)": {
+      "average_sops": 98933.07733333333,
+      "max_seq_length": 64,
+      "ms_per_pair": 1.6479850433333334,
+      "pearson_correlation": 0.6005051732063293,
+      "train_time_seconds": 5.067430588,
+      "use_attention": true
+    }
+  }
+}
