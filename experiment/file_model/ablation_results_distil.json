@@ -1,0 +1,40 @@
+{
+  "ablation_study": {
+    "T=16 (with-attention)": {
+      "average_sops": 70014.12266666666,
+      "max_seq_length": 16,
+      "ms_per_pair": 0.5340690486666666,
+      "pearson_correlation": 0.603219211101532,
+      "train_time_seconds": 22.197702648,
+      "training_dataset": "Knowledge Distillation (AI)",
+      "use_attention": true
+    },
+    "T=32 (no-attention)": {
+      "average_sops": 76471.46666666666,
+      "max_seq_length": 32,
+      "ms_per_pair": 0.7440695886666666,
+      "pearson_correlation": 0.5984262228012085,
+      "train_time_seconds": 29.824823239,
+      "training_dataset": "Knowledge Distillation (AI)",
+      "use_attention": false
+    },
+    "T=32 (with-attention)": {
+      "average_sops": 75572.224,
+      "max_seq_length": 32,
+      "ms_per_pair": 0.9087659599999999,
+      "pearson_correlation": 0.6263394355773926,
+      "train_time_seconds": 29.59951235,
+      "training_dataset": "Knowledge Distillation (AI)",
+      "use_attention": true
+    },
+    "T=64 (with-attention)": {
+      "average_sops": 78619.22133333333,
+      "max_seq_length": 64,
+      "ms_per_pair": 1.684225084,
+      "pearson_correlation": 0.5925290584564209,
+      "train_time_seconds": 41.783017407,
+      "training_dataset": "Knowledge Distillation (AI)",
+      "use_attention": true
+    }
+  }
+}

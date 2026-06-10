@@ -150,9 +150,10 @@ fn evaluate(embedder: &mut SpikingSentenceEmbedder, eval_data: &[STSPair]) -> (f
 
 fn main() {
     let vocab_path = "experiment/file_model/vocab.json";
-    let dataset_path = "/home/akhyar/Dokumen/Code/NODE_JS/penelitian_model_bahasa_dengan_spiking/dataset/human_only_dataset.json";
+    // Gunakan Knowledge Distillation (AI) — terbukti terbaik dari full_eval_controlled
+    let dataset_path = "/home/akhyar/Dokumen/Code/NODE_JS/penelitian_model_bahasa_dengan_spiking/dataset/teacher_distillation_dataset.json";
     let eval_path = "experiment/file_model/sts-b_valid.json";
-    let output_path = "experiment/file_model/ablation_results.json";
+    let output_path = "experiment/file_model/ablation_results_distil.json";
 
     println!("Memuat tokenizer...");
     let tokenizer = BPETokenizer::load(vocab_path);
@@ -187,10 +188,10 @@ fn main() {
     let mut all_results = serde_json::Map::new();
 
     println!("\n=======================================================");
-    println!("          STUDI ABLASI: ARSITEKTUR SNN                ");
+    println!(" ABLASI ARSITEKTUR — Dataset: Knowledge Distillation AI ");
     println!("=======================================================");
-    println!(" {:<26} | {:>8} | {:>10} | {:>12}", "Konfigurasi", "Pearson", "ms/pair", "Training(s)");
-    println!("---------------------------------------------------------");
+    println!(" {:<26} | {:>8} | {:>10} | {:>12} | {:>10}", "Konfigurasi", "Pearson", "ms/pair", "Training(s)", "SOPs/kalimat");
+    println!("-------------------------------------------------------------------");
 
     for (label, max_seq_length, use_attention) in &ablation_configs {
         print!(" {:<26} | training...", label);
@@ -213,10 +214,11 @@ fn main() {
         let avg_sops = embedder.metrics.total_sops as f64
             / embedder.metrics.total_sentences.max(1) as f64;
 
-        println!("\r {:<26} | {:>8.4} | {:>10.2} | {:>12.2}",
-            label, pearson, ms_per_pair, train_secs);
+        println!("\r {:<26} | {:>8.4} | {:>10.2} | {:>12.2} | {:>10.0}",
+            label, pearson, ms_per_pair, train_secs, avg_sops);
 
         all_results.insert(label.to_string(), json!({
+            "training_dataset": "Knowledge Distillation (AI)",
             "max_seq_length": max_seq_length,
             "use_attention": use_attention,
             "pearson_correlation": pearson,
