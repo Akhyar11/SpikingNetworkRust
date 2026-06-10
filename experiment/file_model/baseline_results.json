@@ -1,0 +1,35 @@
+{
+  "baseline_results": {
+    "Random-300d": {
+      "pearson": 0.0109,
+      "ms_per_pair": 0.022,
+      "note": "floor baseline"
+    },
+    "TF-IDF": {
+      "pearson": 0.7596,
+      "ms_per_pair": 0.038,
+      "vocab_size": 6289
+    },
+    "GloVe-100d": {
+      "pearson": 0.476,
+      "ms_per_pair": 0.056,
+      "dim": 100,
+      "vocab_size": 400000,
+      "model_key": "glove-wiki-gigaword-100"
+    },
+    "GloVe-300d": {
+      "pearson": 0.5549,
+      "ms_per_pair": 0.058,
+      "dim": 300,
+      "vocab_size": 400000,
+      "model_key": "glove-wiki-gigaword-300"
+    },
+    "Word2Vec-300d": {
+      "pearson": 0.7249,
+      "ms_per_pair": 0.094,
+      "dim": 300,
+      "vocab_size": 3000000,
+      "model_key": "word2vec-google-news-300"
+    }
+  }
+}
