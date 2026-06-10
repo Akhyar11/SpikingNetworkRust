@@ -151,7 +151,7 @@ fn evaluate(embedder: &mut SpikingSentenceEmbedder, eval_data: &[STSPair]) -> (f
 fn main() {
     let vocab_path = "experiment/file_model/vocab.json";
     // Gunakan Knowledge Distillation (AI) — terbukti terbaik dari full_eval_controlled
-    let dataset_path = "/home/akhyar/Dokumen/Code/NODE_JS/penelitian_model_bahasa_dengan_spiking/dataset/teacher_distillation_dataset.json";
+    let dataset_path = "experiment/file_model/teacher_distillation_dataset.json";
     let eval_path = "experiment/file_model/sts-b_valid.json";
     let output_path = "experiment/file_model/ablation_results_distil.json";
 

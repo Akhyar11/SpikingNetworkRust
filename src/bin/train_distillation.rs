@@ -16,7 +16,7 @@ struct DistillationPair {
 
 fn main() {
     let vocab_path = "experiment/file_model/vocab.json";
-    let dataset_path = "/home/akhyar/Dokumen/Code/NODE_JS/penelitian_model_bahasa_dengan_spiking/dataset/teacher_distillation_dataset.json";
+    let dataset_path = "experiment/file_model/teacher_distillation_dataset.json";
     let model_save_path = "experiment/file_model/saved_model_distil.json";
 
     println!("Memuat tokenizer dari {}...", vocab_path);

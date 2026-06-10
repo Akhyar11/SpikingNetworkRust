@@ -98,7 +98,7 @@ fn evaluate_stsb(embedder: &mut SpikingSentenceEmbedder, eval_data: &[STSPair]) 
 // ─── Training: Human-Annotated (STS-B) ───────────────────────────────────────
 
 fn train_human(tokenizer: BPETokenizer, vocab_size: usize, init: &serde_json::Value) -> SpikingSentenceEmbedder {
-    let dataset_path = "/home/akhyar/Dokumen/Code/NODE_JS/penelitian_model_bahasa_dengan_spiking/dataset/human_only_dataset.json";
+    let dataset_path = "experiment/file_model/human_only_dataset.json";
     let f = File::open(dataset_path).expect("human_only_dataset.json tidak ditemukan");
     let dataset: Vec<PairScored> = serde_json::from_reader(BufReader::new(f)).unwrap();
     let mut embedder = new_embedder(tokenizer, vocab_size, 64, 32);
@@ -130,7 +130,7 @@ fn train_human(tokenizer: BPETokenizer, vocab_size: usize, init: &serde_json::Va
 // ─── Training: Knowledge Distillation (Teacher AI) ───────────────────────────
 
 fn train_distil(tokenizer: BPETokenizer, vocab_size: usize, init: &serde_json::Value) -> SpikingSentenceEmbedder {
-    let dataset_path = "/home/akhyar/Dokumen/Code/NODE_JS/penelitian_model_bahasa_dengan_spiking/dataset/teacher_distillation_dataset.json";
+    let dataset_path = "experiment/file_model/teacher_distillation_dataset.json";
     let f = File::open(dataset_path).expect("teacher_distillation_dataset.json tidak ditemukan");
     let dataset: Vec<PairScored> = serde_json::from_reader(BufReader::new(f)).unwrap();
     let mut embedder = new_embedder(tokenizer, vocab_size, 64, 32);
