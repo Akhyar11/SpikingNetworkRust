@@ -10,7 +10,8 @@ use std::time::Instant;
 
 fn corrupt_sentence(sentence: &str) -> String {
     let mut words: Vec<String> = sentence.split_whitespace().map(|s| s.to_string()).collect();
-    let mut rng = rand::thread_rng();
+    use rand::SeedableRng;
+    let mut rng = rand::rngs::StdRng::seed_from_u64(42);
 
     if words.len() > 3 {
         let drop_count = 2.max((words.len() as f32 * 0.25) as usize);
@@ -108,7 +109,8 @@ fn main() {
     println!("Total kalimat valid: {}, Estimasi {} step per epoch", valid_lines_count, max_steps_per_epoch);
 
     use rand::seq::SliceRandom;
-    let mut rng = rand::thread_rng();
+    use rand::SeedableRng;
+    let mut rng = rand::rngs::StdRng::seed_from_u64(42);
 
     let mut best_loss = f32::MAX;
     let mut patience_counter = 0;

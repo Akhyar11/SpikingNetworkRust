@@ -58,7 +58,8 @@ fn main() {
     println!("Total pasangan kalimat: {}, Estimasi {} step per epoch", valid_pairs_count, max_steps_per_epoch);
 
     use rand::seq::SliceRandom;
-    let mut rng = rand::thread_rng();
+    use rand::SeedableRng;
+    let mut rng = rand::rngs::StdRng::seed_from_u64(42);
 
     let mut best_loss = f32::MAX;
     let total_global_steps = max_steps_per_epoch * num_epochs;

@@ -26,6 +26,7 @@ pub struct SpikingSentenceEmbedder {
     pub pooler: SpikingDenseBPTT,
     pub max_seq_length: usize,
     pub cached_actual_lengths: Option<Vec<usize>>,
+    pub rng: rand::rngs::StdRng,
 }
 
 impl SpikingSentenceEmbedder {
@@ -73,6 +74,7 @@ impl SpikingSentenceEmbedder {
             }
         }
 
+        use rand::SeedableRng;
         Self {
             tokenizer,
             embedding,
@@ -80,6 +82,7 @@ impl SpikingSentenceEmbedder {
             pooler,
             max_seq_length: config.max_seq_length,
             cached_actual_lengths: None,
+            rng: rand::rngs::StdRng::seed_from_u64(42),
         }
     }
 
@@ -178,7 +181,6 @@ impl SpikingSentenceEmbedder {
 
     pub fn train_step(&mut self, texts: &[&str], num_pairs: usize, margin: f32, dropout_rate: f32) -> (f32, f32, f32) {
         use rand::Rng;
-        let mut rng = rand::thread_rng();
 
         self.zero_pad_token();
         let batch_size = texts.len();
@@ -213,7 +215,7 @@ impl SpikingSentenceEmbedder {
         // Matikan letupan (spikes) secara acak sebesar dropout_rate untuk menciptakan "Neuron Noise"
         if dropout_rate > 0.0 {
             for val in spikes1.iter_mut() {
-                if *val > 0.0 && rng.gen_bool(dropout_rate as f64) {
+                if *val > 0.0 && self.rng.gen_bool(dropout_rate as f64) {
                     *val = 0.0;
                 }
             }

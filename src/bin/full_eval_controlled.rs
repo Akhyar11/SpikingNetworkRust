@@ -108,7 +108,8 @@ fn train_human(tokenizer: BPETokenizer, vocab_size: usize, init: &serde_json::Va
     let total_steps = dataset.len() / num_pairs;
     let mut step = 0;
     use rand::seq::SliceRandom;
-    let mut rng = rand::thread_rng();
+    use rand::SeedableRng;
+    let mut rng = rand::rngs::StdRng::seed_from_u64(42);
     let mut data = dataset.clone();
     data.shuffle(&mut rng);
     let mut batch_texts = Vec::new();
@@ -140,7 +141,8 @@ fn train_distil(tokenizer: BPETokenizer, vocab_size: usize, init: &serde_json::V
     let total_steps = dataset.len() / num_pairs;
     let mut step = 0;
     use rand::seq::SliceRandom;
-    let mut rng = rand::thread_rng();
+    use rand::SeedableRng;
+    let mut rng = rand::rngs::StdRng::seed_from_u64(42);
     let mut data = dataset.clone();
     data.shuffle(&mut rng);
     let mut batch_texts = Vec::new();
@@ -163,7 +165,7 @@ fn train_distil(tokenizer: BPETokenizer, vocab_size: usize, init: &serde_json::V
 
 fn corrupt_sentence(s: &str) -> String { s.to_string() }
 
-fn create_hard_negative(sentence: &str, all_lines: &[String], rng: &mut rand::rngs::ThreadRng) -> String {
+fn create_hard_negative(sentence: &str, all_lines: &[String], rng: &mut rand::rngs::StdRng) -> String {
     use rand::seq::SliceRandom;
     use rand::Rng;
     let words: Vec<&str> = sentence.split_whitespace().collect();
@@ -195,7 +197,8 @@ fn train_simcse(tokenizer: BPETokenizer, vocab_size: usize, init: &serde_json::V
     let total_steps = all_lines.len() / num_pairs;
     let mut global_step = 0;
     use rand::seq::SliceRandom;
-    let mut rng = rand::thread_rng();
+    use rand::SeedableRng;
+    let mut rng = rand::rngs::StdRng::seed_from_u64(42);
     all_lines.shuffle(&mut rng);
     let mut q_texts = Vec::new();
     let mut p_texts = Vec::new();

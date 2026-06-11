@@ -22,7 +22,8 @@ pub struct SpikingEmbedding {
 
 impl SpikingEmbedding {
     pub fn new(input_dim: usize, output_dim: usize, learning_rate: f32, clip_min: f32, clip_max: f32) -> Self {
-        let mut rng = rand::thread_rng();
+        use rand::SeedableRng;
+        let mut rng = rand::rngs::StdRng::seed_from_u64(42);
         let limit = (6.0 / (input_dim as f32 + output_dim as f32)).sqrt();
         let scale_factor = (input_dim as f32).sqrt();
         let mut weights = vec![0.0; input_dim * output_dim];

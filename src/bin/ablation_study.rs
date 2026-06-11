@@ -71,7 +71,8 @@ fn train_model(
     let mut global_step = 0;
 
     use rand::seq::SliceRandom;
-    let mut rng = rand::thread_rng();
+    use rand::SeedableRng;
+    let mut rng = rand::rngs::StdRng::seed_from_u64(42);
     let mut data = dataset.to_vec();
 
     for _ in 1..=num_epochs {

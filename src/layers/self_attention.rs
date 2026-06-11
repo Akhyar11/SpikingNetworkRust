@@ -38,7 +38,8 @@ impl SpikingSelfAttention {
         _beta_range: (f32, f32), 
         threshold_range: (f32, f32)
     ) -> Self {
-        let mut rng = rand::thread_rng();
+        use rand::SeedableRng;
+        let mut rng = rand::rngs::StdRng::seed_from_u64(42);
         let mut kernel_q = vec![0.0; d_model * d_model];
         let mut kernel_k = vec![0.0; d_model * d_model];
         let mut kernel_v = vec![0.0; d_model * d_model];

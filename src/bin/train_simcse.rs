@@ -12,7 +12,7 @@ fn corrupt_sentence(sentence: &str) -> String {
     sentence.to_string()
 }
 
-fn create_hard_negative(sentence: &str, all_lines: &Vec<String>, _all_words: &Vec<String>, rng: &mut rand::rngs::ThreadRng) -> String {
+fn create_hard_negative(sentence: &str, all_lines: &Vec<String>, _all_words: &Vec<String>, rng: &mut rand::rngs::StdRng) -> String {
     use rand::Rng;
     use rand::seq::SliceRandom;
     
@@ -105,7 +105,8 @@ fn main() {
     println!("Total kata unik untuk sintesis Hard Negative: {}", all_words.len());
 
     use rand::seq::SliceRandom;
-    let mut rng = rand::thread_rng();
+    use rand::SeedableRng;
+    let mut rng = rand::rngs::StdRng::seed_from_u64(42);
 
     let mut best_loss = f32::MAX;
     let mut patience_counter = 0;
