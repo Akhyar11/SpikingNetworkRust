@@ -240,7 +240,7 @@ impl SpikingSentenceEmbedder {
         // --- SimCSE Dropout Injection ---
         if dropout_rate > 0.0 {
             for val in spikes2.iter_mut() {
-                if *val > 0.0 && rng.gen_bool(dropout_rate as f64) {
+                if *val > 0.0 && self.rng.gen_bool(dropout_rate as f64) {
                     *val = 0.0;
                 }
             }

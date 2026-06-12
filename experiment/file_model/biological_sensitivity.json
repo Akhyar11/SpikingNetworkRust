@@ -1,12 +1,12 @@
 {
   "heterogeneous": {
     "average_sops": 104164.608,
-    "ms_per_pair": 1.365397504,
+    "ms_per_pair": 1.332512542,
     "pearson": 0.5629566311836243
   },
   "homogeneous": {
     "average_sops": 104164.608,
-    "ms_per_pair": 1.4086728533333335,
+    "ms_per_pair": 1.4030398833333333,
     "pearson": 0.5596075057983398
   }
 }
