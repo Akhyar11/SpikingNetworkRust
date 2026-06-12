@@ -1,86 +1,40 @@
 {
   "controlled_initialization": true,
   "evaluation": {
-    "Human-Only (STS-B)": {
+    "Ablation: No-Attention": {
       "results": {
         "SICK-R": {
-          "ms_per_pair": 0.8614741794096907,
-          "n_pairs": 9927,
-          "pearson": 0.3714919984340668
-        },
-        "STS-12": {
-          "ms_per_pair": 0.8582526505791507,
-          "n_pairs": 3108,
-          "pearson": 0.3783858120441437
-        },
-        "STS-13": {
-          "ms_per_pair": 0.8541770686666667,
-          "n_pairs": 1500,
-          "pearson": 0.38480231165885925
-        },
-        "STS-14": {
-          "ms_per_pair": 0.8603348695999999,
-          "n_pairs": 3750,
-          "pearson": 0.41910576820373535
-        },
-        "STS-15": {
-          "ms_per_pair": 0.8739806286666667,
-          "n_pairs": 3000,
-          "pearson": 0.4576113820075989
-        },
-        "STS-16": {
-          "ms_per_pair": 0.938881284148398,
-          "n_pairs": 1186,
-          "pearson": 0.36078450083732605
-        },
-        "STS-B": {
-          "ms_per_pair": 0.8525224640000001,
-          "n_pairs": 1500,
-          "pearson": 0.5924116373062134
-        },
-        "_energy": {
-          "average_spikes_per_sentence": 641.9105585916316,
-          "energy_savings_ratio": 124.42854994509085,
-          "snn_sops_per_sentence": 82164.55149972884,
-          "transformer_macs_estimated": 10223616.0
-        }
-      },
-      "train_time_seconds": 3.461741759
-    },
-    "Knowledge Distillation (AI)": {
-      "results": {
-        "SICK-R": {
-          "ms_per_pair": 0.9004505350055403,
+          "ms_per_pair": 0.8432188977536014,
           "n_pairs": 9927,
           "pearson": 0.39047300815582275
         },
         "STS-12": {
-          "ms_per_pair": 0.9628169893822394,
+          "ms_per_pair": 0.8685198153153153,
           "n_pairs": 3108,
           "pearson": 0.4144718050956726
         },
         "STS-13": {
-          "ms_per_pair": 0.9020303873333332,
+          "ms_per_pair": 0.8463095446666666,
           "n_pairs": 1500,
           "pearson": 0.4197160303592682
         },
         "STS-14": {
-          "ms_per_pair": 0.906678564,
+          "ms_per_pair": 0.8908269157333334,
           "n_pairs": 3750,
           "pearson": 0.4467412531375885
         },
         "STS-15": {
-          "ms_per_pair": 0.9321810543333333,
+          "ms_per_pair": 0.8646845153333333,
           "n_pairs": 3000,
           "pearson": 0.4637439250946045
         },
         "STS-16": {
-          "ms_per_pair": 0.930986581787521,
+          "ms_per_pair": 0.8556917537942663,
           "n_pairs": 1186,
           "pearson": 0.3394203782081604
         },
         "STS-B": {
-          "ms_per_pair": 0.9720547366666666,
+          "ms_per_pair": 0.8797608459999999,
           "n_pairs": 1500,
           "pearson": 0.6171419024467468
         },
@@ -91,42 +45,272 @@
           "transformer_macs_estimated": 10223616.0
         }
       },
-      "train_time_seconds": 30.078659084
+      "train_time_seconds": 32.535584297
+    },
+    "Ablation: T=16": {
+      "results": {
+        "SICK-R": {
+          "ms_per_pair": 0.6163500400926766,
+          "n_pairs": 9927,
+          "pearson": 0.40486782789230347
+        },
+        "STS-12": {
+          "ms_per_pair": 0.6526365675675676,
+          "n_pairs": 3108,
+          "pearson": 0.43750134110450745
+        },
+        "STS-13": {
+          "ms_per_pair": 0.6473331273333334,
+          "n_pairs": 1500,
+          "pearson": 0.40126630663871765
+        },
+        "STS-14": {
+          "ms_per_pair": 0.6454648101333333,
+          "n_pairs": 3750,
+          "pearson": 0.41069328784942627
+        },
+        "STS-15": {
+          "ms_per_pair": 0.675633139,
+          "n_pairs": 3000,
+          "pearson": 0.46908703446388245
+        },
+        "STS-16": {
+          "ms_per_pair": 0.6693269451939292,
+          "n_pairs": 1186,
+          "pearson": 0.31582608819007874
+        },
+        "STS-B": {
+          "ms_per_pair": 0.674360504,
+          "n_pairs": 1500,
+          "pearson": 0.5778147578239441
+        },
+        "_energy": {
+          "average_spikes_per_sentence": 468.7112344082433,
+          "energy_savings_ratio": 170.4076927041015,
+          "snn_sops_per_sentence": 59995.03800425514,
+          "transformer_macs_estimated": 10223616.0
+        }
+      },
+      "train_time_seconds": 23.444585449
+    },
+    "Ablation: T=64": {
+      "results": {
+        "SICK-R": {
+          "ms_per_pair": 1.890787734159363,
+          "n_pairs": 9927,
+          "pearson": 0.3960399329662323
+        },
+        "STS-12": {
+          "ms_per_pair": 1.8979934684684685,
+          "n_pairs": 3108,
+          "pearson": 0.43407291173934937
+        },
+        "STS-13": {
+          "ms_per_pair": 1.9348085599999998,
+          "n_pairs": 1500,
+          "pearson": 0.42298343777656555
+        },
+        "STS-14": {
+          "ms_per_pair": 1.8797855098666667,
+          "n_pairs": 3750,
+          "pearson": 0.46063199639320374
+        },
+        "STS-15": {
+          "ms_per_pair": 1.8961758223333334,
+          "n_pairs": 3000,
+          "pearson": 0.4720950722694397
+        },
+        "STS-16": {
+          "ms_per_pair": 1.9276586593591905,
+          "n_pairs": 1186,
+          "pearson": 0.34017470479011536
+        },
+        "STS-B": {
+          "ms_per_pair": 1.9330624179999998,
+          "n_pairs": 1500,
+          "pearson": 0.6298525929450989
+        },
+        "_energy": {
+          "average_spikes_per_sentence": 498.42088356764424,
+          "energy_savings_ratio": 160.25010715499045,
+          "snn_sops_per_sentence": 63797.87309665846,
+          "transformer_macs_estimated": 10223616.0
+        }
+      },
+      "train_time_seconds": 45.272172597
+    },
+    "Human-Only (STS-B)": {
+      "results": {
+        "SICK-R": {
+          "ms_per_pair": 1.0535126244585473,
+          "n_pairs": 9927,
+          "pearson": 0.3714919984340668
+        },
+        "STS-12": {
+          "ms_per_pair": 1.077624771879022,
+          "n_pairs": 3108,
+          "pearson": 0.3783858120441437
+        },
+        "STS-13": {
+          "ms_per_pair": 1.0488315300000002,
+          "n_pairs": 1500,
+          "pearson": 0.38480231165885925
+        },
+        "STS-14": {
+          "ms_per_pair": 1.0307520306666667,
+          "n_pairs": 3750,
+          "pearson": 0.41910576820373535
+        },
+        "STS-15": {
+          "ms_per_pair": 1.029916756,
+          "n_pairs": 3000,
+          "pearson": 0.4576113820075989
+        },
+        "STS-16": {
+          "ms_per_pair": 1.1079753246205732,
+          "n_pairs": 1186,
+          "pearson": 0.36078450083732605
+        },
+        "STS-B": {
+          "ms_per_pair": 1.026998418,
+          "n_pairs": 1500,
+          "pearson": 0.5924116373062134
+        },
+        "_energy": {
+          "average_spikes_per_sentence": 641.9105585916316,
+          "energy_savings_ratio": 124.42854994509085,
+          "snn_sops_per_sentence": 82164.55149972884,
+          "transformer_macs_estimated": 10223616.0
+        }
+      },
+      "train_time_seconds": 3.615147178
+    },
+    "Knowledge Distillation (AI) [T=32]": {
+      "results": {
+        "SICK-R": {
+          "ms_per_pair": 1.0094046911453611,
+          "n_pairs": 9927,
+          "pearson": 0.39047300815582275
+        },
+        "STS-12": {
+          "ms_per_pair": 1.056882285070785,
+          "n_pairs": 3108,
+          "pearson": 0.4144718050956726
+        },
+        "STS-13": {
+          "ms_per_pair": 1.057015892,
+          "n_pairs": 1500,
+          "pearson": 0.4197160303592682
+        },
+        "STS-14": {
+          "ms_per_pair": 1.0321029231999999,
+          "n_pairs": 3750,
+          "pearson": 0.4467412531375885
+        },
+        "STS-15": {
+          "ms_per_pair": 1.0409128343333334,
+          "n_pairs": 3000,
+          "pearson": 0.4637439250946045
+        },
+        "STS-16": {
+          "ms_per_pair": 1.1146761298482293,
+          "n_pairs": 1186,
+          "pearson": 0.3394203782081604
+        },
+        "STS-B": {
+          "ms_per_pair": 1.066451858,
+          "n_pairs": 1500,
+          "pearson": 0.6171419024467468
+        },
+        "_energy": {
+          "average_spikes_per_sentence": 504.58491510575277,
+          "energy_savings_ratio": 158.29248479071185,
+          "snn_sops_per_sentence": 64586.869133536355,
+          "transformer_macs_estimated": 10223616.0
+        }
+      },
+      "train_time_seconds": 31.526759626
+    },
+    "Knowledge Distillation (Homogeneous)": {
+      "results": {
+        "SICK-R": {
+          "ms_per_pair": 1.006059216077365,
+          "n_pairs": 9927,
+          "pearson": 0.3383427560329437
+        },
+        "STS-12": {
+          "ms_per_pair": 1.0332387380952381,
+          "n_pairs": 3108,
+          "pearson": 0.3114064335823059
+        },
+        "STS-13": {
+          "ms_per_pair": 1.0572327386666667,
+          "n_pairs": 1500,
+          "pearson": 0.3993591070175171
+        },
+        "STS-14": {
+          "ms_per_pair": 1.0166721376,
+          "n_pairs": 3750,
+          "pearson": 0.41816791892051697
+        },
+        "STS-15": {
+          "ms_per_pair": 1.0415330943333334,
+          "n_pairs": 3000,
+          "pearson": 0.45180606842041016
+        },
+        "STS-16": {
+          "ms_per_pair": 1.0398572849915682,
+          "n_pairs": 1186,
+          "pearson": 0.3202838897705078
+        },
+        "STS-B": {
+          "ms_per_pair": 1.0460356186666668,
+          "n_pairs": 1500,
+          "pearson": 0.5212276577949524
+        },
+        "_energy": {
+          "average_spikes_per_sentence": 199.2306537065621,
+          "energy_savings_ratio": 400.9021629655439,
+          "snn_sops_per_sentence": 25501.523674439948,
+          "transformer_macs_estimated": 10223616.0
+        }
+      },
+      "train_time_seconds": 26.196013247
     },
     "Unsupervised SimCSE": {
       "results": {
         "SICK-R": {
-          "ms_per_pair": 0.9770491548302608,
+          "ms_per_pair": 1.1066069570867332,
           "n_pairs": 9927,
           "pearson": 0.3818129003047943
         },
         "STS-12": {
-          "ms_per_pair": 1.012547622908623,
+          "ms_per_pair": 1.154824268018018,
           "n_pairs": 3108,
           "pearson": 0.29988449811935425
         },
         "STS-13": {
-          "ms_per_pair": 0.9869766853333334,
+          "ms_per_pair": 1.1233747793333333,
           "n_pairs": 1500,
           "pearson": 0.30161795020103455
         },
         "STS-14": {
-          "ms_per_pair": 0.9948616813333333,
+          "ms_per_pair": 1.1644667968,
           "n_pairs": 3750,
           "pearson": 0.339535117149353
         },
         "STS-15": {
-          "ms_per_pair": 1.0210485343333333,
+          "ms_per_pair": 1.1575132826666665,
           "n_pairs": 3000,
           "pearson": 0.31827759742736816
         },
         "STS-16": {
-          "ms_per_pair": 1.014007950252951,
+          "ms_per_pair": 1.1886938878583473,
           "n_pairs": 1186,
           "pearson": 0.2403915375471115
         },
         "STS-B": {
-          "ms_per_pair": 1.055015134,
+          "ms_per_pair": 1.223274578,
           "n_pairs": 1500,
           "pearson": 0.4922950863838196
         },
@@ -137,7 +321,7 @@
           "transformer_macs_estimated": 10223616.0
         }
       },
-      "train_time_seconds": 27.507015043
+      "train_time_seconds": 29.465958006
     }
   },
   "init_weights_file": "experiment/file_model/init_weights.json"

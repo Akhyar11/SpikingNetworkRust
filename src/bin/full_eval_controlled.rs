@@ -130,12 +130,83 @@ fn train_human(tokenizer: BPETokenizer, vocab_size: usize, init: &serde_json::Va
 
 // ─── Training: Knowledge Distillation (Teacher AI) ───────────────────────────
 
+fn train_distil_base(tokenizer: BPETokenizer, vocab_size: usize, init: &serde_json::Value, max_seq_length: usize, use_attention: bool) -> SpikingSentenceEmbedder {
+    let dataset_path = "experiment/file_model/teacher_distillation_dataset.json";
+    let f = File::open(dataset_path).expect("teacher_distillation_dataset.json tidak ditemukan");
+    let dataset: Vec<PairScored> = serde_json::from_reader(BufReader::new(f)).unwrap();
+    let mut embedder = new_embedder(tokenizer, vocab_size, 64, max_seq_length);
+    apply_init(&mut embedder, init);
+    embedder.set_use_attention(use_attention);
+
+    let num_pairs = 32;
+    let total_steps = dataset.len() / num_pairs;
+    let mut step = 0;
+    use rand::seq::SliceRandom;
+    use rand::SeedableRng;
+    let mut rng = rand::rngs::StdRng::seed_from_u64(42);
+    let mut data = dataset.clone();
+    data.shuffle(&mut rng);
+    let mut batch_texts = Vec::new();
+    let mut batch_targets = Vec::new();
+    for pair in &data {
+        batch_texts.push(pair.s1.clone()); batch_texts.push(pair.s2.clone());
+        batch_targets.push(pair.score);
+        if batch_targets.len() == num_pairs {
+            let lr = 0.01 * f32::max(0.01, 1.0 - (step as f32 / total_steps as f32));
+            embedder.set_learning_rate(lr);
+            let texts: Vec<&str> = batch_texts.iter().map(|s| s.as_str()).collect();
+            embedder.train_step_distill(&texts, &batch_targets, 0.2);
+            batch_texts.clear(); batch_targets.clear(); step += 1;
+        }
+    }
+    embedder
+}
+
 fn train_distil(tokenizer: BPETokenizer, vocab_size: usize, init: &serde_json::Value) -> SpikingSentenceEmbedder {
+    train_distil_base(tokenizer, vocab_size, init, 32, true)
+}
+
+fn train_distil_t16(tokenizer: BPETokenizer, vocab_size: usize, init: &serde_json::Value) -> SpikingSentenceEmbedder {
+    train_distil_base(tokenizer, vocab_size, init, 16, true)
+}
+
+fn train_distil_t64(tokenizer: BPETokenizer, vocab_size: usize, init: &serde_json::Value) -> SpikingSentenceEmbedder {
+    train_distil_base(tokenizer, vocab_size, init, 64, true)
+}
+
+fn train_distil_no_att(tokenizer: BPETokenizer, vocab_size: usize, init: &serde_json::Value) -> SpikingSentenceEmbedder {
+    train_distil_base(tokenizer, vocab_size, init, 32, false)
+}
+
+fn apply_init_homogen(embedder: &mut SpikingSentenceEmbedder, init: &serde_json::Value) {
+    for group in &["embedding", "attention", "pooler"] {
+        let layer: &mut dyn Layer = match *group {
+            "embedding" => &mut embedder.embedding,
+            "attention" => &mut embedder.attention,
+            _           => &mut embedder.pooler,
+        };
+        if let Some(obj) = init.get(group).and_then(|v| v.as_object()) {
+            for (k, v) in obj {
+                if let Ok(mut data) = serde_json::from_value::<Vec<f32>>(v.clone()) {
+                    if k.starts_with("beta") {
+                        for x in data.iter_mut() { *x = 0.90; }
+                    } else if k.starts_with("threshold") {
+                        let t_val = if *group == "attention" { 0.20 } else { 0.75 };
+                        for x in data.iter_mut() { *x = t_val; }
+                    }
+                    let _ = layer.set_parameter(k, &data);
+                }
+            }
+        }
+    }
+}
+
+fn train_distil_homogen(tokenizer: BPETokenizer, vocab_size: usize, init: &serde_json::Value) -> SpikingSentenceEmbedder {
     let dataset_path = "experiment/file_model/teacher_distillation_dataset.json";
     let f = File::open(dataset_path).expect("teacher_distillation_dataset.json tidak ditemukan");
     let dataset: Vec<PairScored> = serde_json::from_reader(BufReader::new(f)).unwrap();
     let mut embedder = new_embedder(tokenizer, vocab_size, 64, 32);
-    apply_init(&mut embedder, init);
+    apply_init_homogen(&mut embedder, init);
 
     let num_pairs = 32;
     let total_steps = dataset.len() / num_pairs;
@@ -286,8 +357,12 @@ fn main() {
 
     let strategies: Vec<(&str, fn(BPETokenizer, usize, &serde_json::Value) -> SpikingSentenceEmbedder)> = vec![
         ("Human-Only (STS-B)",         train_human),
-        ("Knowledge Distillation (AI)", train_distil),
+        ("Knowledge Distillation (AI) [T=32]", train_distil),
+        ("Knowledge Distillation (Homogeneous)", train_distil_homogen),
         ("Unsupervised SimCSE",        train_simcse),
+        ("Ablation: T=16",             train_distil_t16),
+        ("Ablation: T=64",             train_distil_t64),
+        ("Ablation: No-Attention",     train_distil_no_att),
     ];
 
     let mut all_results = serde_json::Map::new();
