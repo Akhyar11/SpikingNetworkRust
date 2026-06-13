@@ -51,12 +51,12 @@ Spiking Neural Networks (SNNs) have emerged as a highly promising alternative, d
 
 Despite these compelling advantages, the application of SNNs remains predominantly focused on computer vision and simple auditory tasks. Extending SNN capabilities to complex NLP tasks, particularly semantic sentence embedding, remains a significant open challenge. The primary gap lies in representation learning: the discrete, non-differentiable nature of spike domains struggles to capture the continuous, nuanced spatial topologies required to model deep semantic similarity. While recent efforts have attempted to bridge SNNs with NLP \citep{li2022spikeformer, zhu2023spikegpt}, constructing an efficient, spike-native attention mechanism that yields high-fidelity semantic embeddings without falling back on dense matrix operations has yet to be fully realized.
 
-To address this limitation, we propose a novel Spiking Sentence Embedder driven by a Sparse Coincidence-Based Semantic Attention mechanism. Rather than computing dense attention scores, our model captures semantic relationships through the temporal overlap (coincidence) of discrete spikes across sequences. To further enhance the network's representational capacity within the binary domain, we introduce heterogeneous neuron dynamics, allowing the network to adaptively tune membrane leak and firing threshold parameters. To overcome the training difficulties inherent to SNNs, we leverage a knowledge distillation framework \citep{hinton2015distilling}, transferring continuous semantic alignment from a dense teacher model directly into the sparse spiking topology.
+To address this limitation, we propose a novel Spiking Sentence Embedder driven by a Sparse Coincidence-Based Semantic Attention mechanism. Rather than computing dense attention scores, our model captures semantic relationships through the temporal overlap (coincidence) of discrete spikes across sequences. To further enhance the network's representational capacity within the binary domain, we introduce heterogeneous neuron dynamics by utilizing fixed, biologically-inspired variations in membrane leak and firing threshold parameters. To overcome the training difficulties inherent to SNNs, we leverage a knowledge distillation framework \citep{hinton2015distilling}, transferring continuous semantic alignment from a dense teacher model directly into the sparse spiking topology.
 
 The primary contributions of this work are summarized as follows:
 \begin{itemize}
     \item \textbf{Sparse Coincidence Semantic Attention}: A novel, spike-native attention mechanism that replaces dense dot-products with event-driven spike coincidences, significantly reducing computational overhead.
-    \item \textbf{Heterogeneous Neuron Dynamics}: The integration of variable, trainable leak and threshold parameters within Leaky Integrate-and-Fire (LIF) neurons, enhancing the semantic representational capacity of the discrete spike domain.
+    \item \textbf{Heterogeneous Neuron Dynamics}: The integration of variable, fixed leak and threshold parameters within Leaky Integrate-and-Fire (LIF) neurons, enhancing the semantic representational capacity of the discrete spike domain.
     \item \textbf{Knowledge Distillation Framework}: A robust training methodology that distills continuous semantic topologies from dense Transformer models into sparse SNN architectures, enabling effective learning of semantic similarity.
     \item \textbf{Ablation and Biological Sensitivity Analysis}: Comprehensive evaluations demonstrating the isolated impact of temporal pooling, distillation, and biological parameter variance on embedding quality.
     \item \textbf{Efficient Semantic Embedding Evaluation}: Empirical validation on the STS-B dataset, demonstrating competitive Pearson correlation ($r=0.617$) while achieving an approximate $158\times$ theoretical computational sparsity reduction compared to standard dense MAC operations.
@@ -98,13 +98,13 @@ Our proposed Spiking Sentence Embedder aims to construct continuous semantic rep
 \end{figure}
 
 \subsection{Spike Encoding and Neuron Dynamics}
-Tokens derived from input sentences are first passed through a static embedding layer to produce continuous vectors. These vectors are then converted into spike trains over $T$ time steps using deterministic rate encoding. We employ Leaky Integrate-and-Fire (LIF) neurons to process these spikes. The membrane potential $U_i^{(t)}$ of neuron $i$ at time $t$ is updated as follows:
+Tokens derived from input sentences are first passed through a static embedding layer to produce continuous vectors. These vectors are then converted into spike trains sequentially across the $L$ token steps using deterministic rate encoding. We employ Leaky Integrate-and-Fire (LIF) neurons to process these spikes. The membrane potential $U_i^{(t)}$ of neuron $i$ at time $t$ is updated as follows:
 \begin{equation}
 U_i^{(t)} = \min\left(1.0, \beta_i U_i^{(t-1)} + \sum_{j} W_{ij} S_j^{(t)}\right) - S_i^{(t)} V_{th, i}
 \end{equation}
 where $S_j^{(t)} \in \{0, 1\}$ is the input spike from the previous layer, $W_{ij}$ is the synaptic weight, and $S_i^{(t)}$ is the output spike generated if the pre-reset potential exceeds the threshold $V_{th, i}$. 
 
-\textbf{Heterogeneous Neurons.} Unlike standard SNNs that employ uniform hyperparameters, we introduce learnable, heterogeneous decay rates ($\beta_i$) and thresholds ($V_{th, i}$) for each neuron. This biological heterogeneity allows different regions of the network to operate at varied temporal timescales, vastly improving the network's capacity to represent nuanced semantic gradients.
+\textbf{Heterogeneous Neurons.} Unlike standard SNNs that employ uniform hyperparameters, we introduce fixed, heterogeneous decay rates ($\beta_i$) and thresholds ($V_{th, i}$) for each neuron. This biological heterogeneity allows different regions of the network to operate at varied temporal timescales, vastly improving the network's capacity to represent nuanced semantic gradients.
 
 \subsection{Sparse Coincidence-Based Semantic Attention}
 Standard Transformer self-attention computes dense pairwise affinities using floating-point dot products. We replace this with a Sparse Coincidence-Based Semantic Attention mechanism. Rather than computing continuous dot products $Q K^T$, our network evaluates the pairwise temporal overlap (coincidence count) between active query and key dimensions. Specifically, for each query token at position $i$, we compute the match count $M_{ij}$ against key tokens at position $j$ by identifying common active spikes. The match scores are then normalized by the maximum match count across the sequence length, yielding robust correlation signals $A_{ij}$:
@@ -142,25 +142,25 @@ These normalized scores are passed through independent Leaky Integrate-and-Fire 
 \end{figure}
 
 \subsection{Temporal Pooling for Sentence Representation}
-After passing through the spiking attention layers, the output remains a sequence of spike trains $S^{(t)}$. To derive a static, continuous sentence embedding vector suitable for evaluating semantic similarity, we implement temporal pooling using a frozen Identity Spiking BPTT layer. Unlike a raw algebraic sum, this layer maintains stateful LIF dynamics but initializes and freezes its recurrent weights as an identity matrix ($W = I$). The final embedding $E$ is derived by accumulating the membrane potentials $U_{pool}$ of this frozen layer over the sequence length $L$:
+After passing through the spiking attention layers, the output remains a sequence of spike trains $S^{(t)}$. To derive a static, continuous sentence embedding vector suitable for evaluating semantic similarity, we implement temporal pooling using a stateful Spiking Dense layer. Unlike a raw algebraic sum, this layer uses a feed-forward identity kernel ($W = I$) while executing a stateful Leaky Integrate-and-Fire (LIF) step at each token position. The final embedding $E$ is derived by accumulating the membrane potentials $U_{pool}$ of this layer over the sequence length $L$:
 \begin{equation}
 E = \sum_{t=1}^{L} U_{pool}^{(t)}
 \end{equation}
 This operation acts as a stateful Identity Integrator during inference, preserving the sequence-level semantic topology while maintaining biologically plausible integration dynamics.
 
 \subsection{Knowledge Distillation and Stabilization}
-To bypass the challenges of applying contrastive learning directly on discrete spikes, we utilize knowledge distillation from a pre-trained dense Transformer (e.g., MiniLM). Instead of traditional continuous loss functions (e.g., MSE or Cosine Embedding Loss), the SNN is trained using an event-driven Contrastive Hebbian learning rule. The learning signal is driven by target similarity scores derived from the teacher model. If the teacher indicates high semantic similarity between a pair, the Hebbian rule initiates a "pull" (Long-Term Potentiation) to co-activate related neurons. Conversely, low similarity triggers a "push" (Long-Term Depression):
+To bypass the challenges of applying contrastive learning directly on discrete spikes, we utilize knowledge distillation from a pre-trained dense Transformer (e.g., MiniLM). Instead of traditional continuous loss functions (e.g., MSE or Cosine Embedding Loss), the SNN is trained using an event-driven Contrastive Hebbian learning rule. The learning signal is driven by target similarity scores derived from the teacher model. The Hebbian rule initiates a weighted "pull" (Long-Term Potentiation) to co-activate related neurons and a weighted "push" (Long-Term Depression) to separate them:
 \begin{equation}
-\Delta W_{ij} \propto S_i^{pre} \times ( \text{Sim}_{teacher} - \text{margin} )
+\Delta W \propto (\text{pull} - \text{push})
 \end{equation}
-To further address the training instability inherent to local learning rules, we implement Homeostatic Weight Clamping during the learning loop. This explicitly prevents weight explosion and "dead neuron" syndrome, ensuring stable propagation of semantic gradients.
+where $\text{pull} = \text{Sim}_{teacher} \times (S_j - S_i)$ and $\text{push} = (1 - \text{Sim}_{teacher}) \times (S_i \times S_j \times \text{margin})$. To further address the training instability inherent to local learning rules, we implement explicit weight clipping during the learning loop. This explicitly prevents weight explosion and "dead neuron" syndrome, ensuring stable propagation of semantic gradients.
 
 \subsection{Energy Efficiency and SOP Analysis}
 To quantify energy efficiency, we measure the number of Synaptic Operations (SOPs) during inference. In standard dense networks, efficiency is measured by Multiply-Accumulate (MAC) operations. In our event-driven SNN, an operation only occurs when a spike is generated. The total SOPs are explicitly tracked across network components:
 \begin{equation}
 \text{SOPs} = \sum \left( S_{emb} \times 3d \right) + \sum \left( S_{pool} \times d \right)
 \end{equation}
-Specifically, each embedding spike triggers 3 additions for the $Q, K, V$ projections (fan-out of $3d$), while the temporal pooler requires $d$ additions per active input. This transparent breakdown allows us to precisely benchmark the $158\times$ computational savings achieved by our sparse coincidence attention relative to standard dense attention blocks.
+Specifically, each embedding spike triggers 3 additions for the $Q, K, V$ projections (fan-out of $3d$), while the temporal pooler requires $d$ additions per active input. It is important to note that this SOP calculation serves as a proxy metric reflecting the specific internal algorithmic accounting of our model rather than an absolute, hardware-agnostic measure. Nevertheless, this transparent breakdown allows us to precisely benchmark the $158\times$ computational savings achieved by our sparse coincidence attention relative to standard dense attention blocks.
 
 \section{Experiments and Results}
 \label{sec:experiments}
@@ -170,7 +170,7 @@ To validate the proposed Spiking Sentence Embedder, we conduct a series of contr
 \subsection{Experimental Setup}
 \textbf{Dataset and Baselines.} We evaluate our model on the Semantic Textual Similarity Benchmark (STS-B), a standard dataset for assessing continuous semantic sentence embeddings. We compare our Spiking Sentence Embedder against established non-SNN baselines: random projections (Floor), TF-IDF (Lexical), and mean-pooled static word embeddings (GloVe 100d/300d, Word2Vec 300d). For our SNN, we evaluate multiple training strategies: (1) \textbf{Unsupervised SimCSE}, a spiking adaptation of contrastive learning using dropout as noise; (2) \textbf{Human-Only}, trained directly on STS-B human-annotated similarity scores; and (3) \textbf{Knowledge Distillation}. For distillation, we generate the soft-label training dataset using the \textbf{Xenova/all-MiniLM-L6-v2} dense transformer as the teacher model.
 
-\textbf{Hyperparameters and Controls.} To ensure strict, deterministic reproducibility and eliminate initialization bias, all models are trained from identical seeded weight initializations. The architecture utilizes a hidden dimension $d=64$, a maximum sequence length $L=32$, and processes spikes over $T=8$ time steps.
+\textbf{Hyperparameters and Controls.} To ensure strict, deterministic reproducibility and eliminate initialization bias, all models are trained from identical seeded weight initializations. The architecture utilizes a hidden dimension $d=64$, and sequentially processes spikes across the maximum sequence length $L=32$, treating each token step as a temporal spiking window ($T=L=32$).
 
 \subsection{Semantic Representation Performance}
 The primary objective of sentence embeddings is to generate vector spaces where cosine similarity strongly correlates with human semantic judgments. Table \ref{tab:semantic_perf} presents the comprehensive comparison of our spiking models against the non-SNN baselines on the STS-B validation set.
