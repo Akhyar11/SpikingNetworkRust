@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026/Arch Linux) (preloaded format=pdflatex 2026.6.12)  13 JUN 2026 07:49
+This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026/Arch Linux) (preloaded format=pdflatex 2026.6.12)  13 JUN 2026 15:17
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -638,16 +638,19 @@ Overfull \hbox (53.69324pt too wide) in paragraph at lines 94--95
  [] 
  []
 
-[3] [4] [5]
-Overfull \hbox (6.64783pt too wide) in paragraph at lines 210--218
+[3] [4]
+
+LaTeX Warning: `h' float specifier changed to `ht'.
+
+[5]
+Overfull \hbox (6.64783pt too wide) in paragraph at lines 213--221
  [] 
  []
 
 
-Underfull \vbox (badness 4621) has occurred while \output is active []
+LaTeX Warning: `h' float specifier changed to `ht'.
 
- [6]
-(./iclr2026_conference.bbl [7]) [8] (./iclr2026_conference.aux)
+[6] (./iclr2026_conference.bbl [7]) [8] (./iclr2026_conference.aux)
  ***********
 LaTeX2e <2025-11-01>
 L3 programming layer <2026-01-19>
@@ -656,9 +659,9 @@ Package rerunfilecheck Info: File `iclr2026_conference.out' has not changed.
 (rerunfilecheck)             Checksum: 1CF2FB9F1A624FC753553E5EAD930F53;3025.
  ) 
 Here is how much of TeX's memory you used:
- 21043 strings out of 469515
- 378741 string characters out of 5470807
- 779418 words of memory out of 5000000
+ 21044 strings out of 469515
+ 378747 string characters out of 5470807
+ 784419 words of memory out of 5000000
  49295 multiletter control sequences out of 15000+600000
  639782 words of font info for 84 fonts, out of 8000000 for 9000
  14 hyphenation exceptions out of 8191
@@ -675,10 +678,10 @@ lic/amsfonts/cm/cmsy10.pfb></usr/share/texmf-dist/fonts/type1/public/amsfonts/c
 m/cmsy6.pfb></usr/share/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy7.pfb></u
 sr/share/texmf-dist/fonts/type1/public/amsfonts/cm/cmti10.pfb></usr/share/texmf
 -dist/fonts/type1/public/amsfonts/cm/cmtt10.pfb>
-Output written on iclr2026_conference.pdf (8 pages, 213233 bytes).
+Output written on iclr2026_conference.pdf (8 pages, 214307 bytes).
 PDF statistics:
- 264 PDF objects out of 1000 (max. 8388607)
- 224 compressed objects within 3 object streams
- 55 named destinations out of 1000 (max. 500000)
+ 265 PDF objects out of 1000 (max. 8388607)
+ 225 compressed objects within 3 object streams
+ 56 named destinations out of 1000 (max. 500000)
  133 words of extra memory for PDF output out of 10000 (max. 10000000)
 
