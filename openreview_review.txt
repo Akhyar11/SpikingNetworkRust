@@ -1,0 +1,29 @@
+Title: Review of "Sparse Coincidence-Based Semantic Attention for Spiking Neural Sentence Embedding"
+
+Summary
+The paper proposes a spiking sentence embedder for semantic textual similarity, combining sparse coincidence-based attention, heterogeneous LIF neuron dynamics, temporal pooling, and knowledge distillation from a dense teacher. The topic is timely and the goal of building an efficient neuromorphic sentence encoder is interesting. However, the current manuscript has major consistency and reproducibility issues, especially between the written method and the available implementation.
+
+Strengths
+1. The problem setting is relevant: sentence embeddings for SNNs is a less explored and potentially impactful direction.
+2. The paper evaluates on several STS benchmarks and includes ablations, which is a good experimental instinct.
+3. The efficiency angle is well motivated for edge and neuromorphic deployment.
+
+Weaknesses
+1. The core novelty claim is not aligned with the implementation. The paper describes coincidence attention as a bitwise AND-based sparse mechanism, but the code computes per-dimension match counts and normalizes them instead of the stated formulation. This makes the main methodological contribution hard to verify.
+2. The distillation objective in the paper does not match the training code. The manuscript states an MSE plus cosine embedding loss, while the implementation uses a Hebbian pull/push rule driven by target similarity scores. This is a substantial mismatch, not a minor notation issue.
+3. Temporal pooling is described as an identity integrator, but the implementation still uses a learned spiking pooler with stateful dynamics. The manuscript under-describes the actual model behavior.
+4. The efficiency claims are not fully transparent. The reported SOP and MAC numbers appear to depend on internal heuristics that are not sufficiently justified in the paper, so the claimed 158x reduction is difficult to audit independently.
+5. Some ablation results weaken the central attention claim. In the available results, attention and no-attention configurations can reach the same Pearson score, suggesting the contribution of the proposed attention module is not clearly established.
+
+Questions for the authors
+1. Can the authors provide a precise, step-by-step description of the implemented coincidence attention and explain how it differs from the mathematical formulation in the paper?
+2. What is the exact training objective used for distillation, and can it be rewritten in a form that matches the implementation?
+3. How are SOPs counted, and can the authors provide a breakdown for embedding, attention, and pooling components separately?
+4. What is the variance across random seeds? The current presentation shows single values, but no confidence intervals or standard deviations.
+
+Overall assessment
+The idea is promising, but the paper currently overstates what is supported by the implementation and experiments. The strongest concern is the mismatch between the manuscript and the code for both the attention mechanism and the distillation objective. Because of that, I would recommend weak reject in the current form.
+
+Scores
+Overall recommendation: 4/10 (weak reject)
+Confidence: 4/5
