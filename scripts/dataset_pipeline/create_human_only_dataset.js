@@ -1,11 +1,14 @@
 import * as fs from 'fs';
+import { join } from 'path';
+
+const EXPERIMENT_DIR = join(import.meta.dirname, '../../experiment/file_model');
 
 function loadHumanDatasets() {
     let combined = [];
 
     // 1. Load sts-b_train.json
     try {
-        const stsJson = JSON.parse(fs.readFileSync('../../experiment/file_model/sts-b_train.json', 'utf8'));
+        const stsJson = JSON.parse(fs.readFileSync(join(EXPERIMENT_DIR, 'sts-b_train.json'), 'utf8'));
         let count = 0;
         stsJson.forEach(item => {
             if (item.sentence1 && item.sentence2 && item.score !== undefined) {
@@ -24,7 +27,7 @@ function loadHumanDatasets() {
 
     // 2. Load data_stsb.train.modified_indo.csv
     try {
-        const csvString = fs.readFileSync('../../experiment/file_model/data_stsb.train.modified_indo.csv', 'utf8');
+        const csvString = fs.readFileSync(join(EXPERIMENT_DIR, 'data_stsb.train.modified_indo.csv'), 'utf8');
         let rows = [];
         let current = [];
         let cell = '';
@@ -82,7 +85,7 @@ function main() {
         [allData[i], allData[j]] = [allData[j], allData[i]];
     }
 
-    const outputPath = '../../experiment/file_model/human_only_dataset.json';
+    const outputPath = join(EXPERIMENT_DIR, 'human_only_dataset.json');
     fs.writeFileSync(outputPath, JSON.stringify(allData, null, 2));
     console.log(`\nSELESAI! Total ${allData.length} pasang kalimat STS-B murni telah digabung, diacak, dan disimpan ke ${outputPath}`);
 }

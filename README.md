@@ -23,12 +23,12 @@ The SNN learns semantic representations directly from raw text corpus (`mini_cor
 
 ### 2. Knowledge Distillation (`train_distillation`)
 Trains the SNN by mimicking a "Teacher" transformer model (`MiniLM-L6-v2`).
-- **Method:** Generating over 100,000 sentence pairs and asking the Teacher for their Cosine Similarity. The SNN uses this similarity score as a coefficient to pull or push its spike representations.
+- **Method:** Generating a distillation dataset that combines human-annotated STS-B pairs and over 100,000 synthetic sentence pairs with clamped Cosine Similarity scores from the Teacher. The SNN uses this similarity score as a coefficient to pull or push its spike representations.
 - **Results:** Evaluated on the STS-B dataset via `full_eval_controlled` binary (ensuring identical weight initialization), the distilled SNN achieved a Pearson Correlation of **0.6171**, proving that dense vector space guidance significantly improves SNN linguistic topology.
 
 ### 3. Pure Human Annotations (`train_human_only`)
 An experiment to test SNN generalization on a small, highly accurate dataset.
-- **Method:** Training purely on 14,740 manually annotated sentence pairs from STS-B (English and Indonesian).
+- **Method:** Training purely on a 14,740 bilingual dataset derived from mixing the English STS-B and an Indonesian translated version.
 - **Results:** Achieved a Pearson Correlation of **0.5924**. This experiment empirically demonstrated that SNNs benefit far more from large-scale machine-distilled continuous targets than from sparse binary human annotations.
 
 ### 4. Controlled Architectural Ablation & Energy Efficiency (`full_eval_controlled`)

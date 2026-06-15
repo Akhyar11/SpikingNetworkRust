@@ -1,6 +1,9 @@
 import { pipeline } from '@xenova/transformers';
 import * as fs from 'fs';
 import * as readline from 'readline';
+import { join } from 'path';
+
+const EXPERIMENT_DIR = join(import.meta.dirname, '../../experiment/file_model');
 
 function standardCosine(vecA, vecB) {
     let dot = 0.0, normA = 0.0, normB = 0.0;
@@ -42,7 +45,7 @@ function loadHumanDatasets() {
 
     // 1. Load sts-b_train.json
     try {
-        const stsJson = JSON.parse(fs.readFileSync('../../experiment/file_model/sts-b_train.json', 'utf8'));
+        const stsJson = JSON.parse(fs.readFileSync(join(EXPERIMENT_DIR, 'sts-b_train.json'), 'utf8'));
         let count = 0;
         stsJson.forEach(item => {
             if (item.sentence1 && item.sentence2 && item.score !== undefined) {
@@ -61,7 +64,7 @@ function loadHumanDatasets() {
 
     // 2. Load data_stsb.train.modified_indo.csv (Manual CSV Parser agar tahan banting dengan quotes)
     try {
-        const csvString = fs.readFileSync('../../experiment/file_model/data_stsb.train.modified_indo.csv', 'utf8');
+        const csvString = fs.readFileSync(join(EXPERIMENT_DIR, 'data_stsb.train.modified_indo.csv'), 'utf8');
         let rows = [];
         let current = [];
         let cell = '';
@@ -112,8 +115,8 @@ async function main() {
     console.log("      MEMBUAT DATASET DISTILASI (TEACHER: MiniLM-L6-v2)     ");
     console.log("============================================================");
 
-    const corpusPath = '../../experiment/file_model/mini_corpus20mb.txt'; // Wikipedia Indo & Inggris
-    const outputPath = '../../experiment/file_model/teacher_distillation_dataset.json';
+    const corpusPath = join(EXPERIMENT_DIR, 'mini_corpus20mb.txt'); // Wikipedia Indo & Inggris
+    const outputPath = join(EXPERIMENT_DIR, 'teacher_distillation_dataset.json');
     const numPairsToGenerate = 100000; // Target 100 Ribu Pasang Kalimat (Anda bisa ubah ini)
 
     console.log("[1/3] Memuat Model Guru (MiniLM-L6-v2) dari HuggingFace...");
