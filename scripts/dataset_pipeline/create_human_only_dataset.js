@@ -1,6 +1,17 @@
 import * as fs from 'fs';
 import { join } from 'path';
 
+// Seeded RNG for reproducibility
+function mulberry32(a) {
+    return function() {
+      var t = a += 0x6D2B79F5;
+      t = Math.imul(t ^ t >>> 15, t | 1);
+      t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    }
+}
+const seededRandom = mulberry32(42); // fixed seed 42
+
 const EXPERIMENT_DIR = join(import.meta.dirname, '../../experiment/file_model');
 
 function loadHumanDatasets() {
@@ -81,7 +92,7 @@ function main() {
 
     // Shuffle
     for (let i = allData.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
+        const j = Math.floor(seededRandom() * (i + 1));
         [allData[i], allData[j]] = [allData[j], allData[i]];
     }
 

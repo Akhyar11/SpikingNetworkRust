@@ -3,6 +3,17 @@ import * as fs from 'fs';
 import * as readline from 'readline';
 import { join } from 'path';
 
+// Seeded RNG for reproducibility
+function mulberry32(a) {
+    return function() {
+      var t = a += 0x6D2B79F5;
+      t = Math.imul(t ^ t >>> 15, t | 1);
+      t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    }
+}
+const seededRandom = mulberry32(42); // fixed seed 42
+
 const EXPERIMENT_DIR = join(import.meta.dirname, '../../experiment/file_model');
 
 function standardCosine(vecA, vecB) {
@@ -28,10 +39,10 @@ function createCutMix(wordsA, wordsB) {
 function createWordSwap(words) {
     if (words.length < 4) return words.join(" ");
     const w = [...words];
-    const idx1 = Math.floor(Math.random() * w.length);
-    let idx2 = Math.floor(Math.random() * w.length);
+    const idx1 = Math.floor(seededRandom() * w.length);
+    let idx2 = Math.floor(seededRandom() * w.length);
     while (idx1 === idx2) {
-        idx2 = Math.floor(Math.random() * w.length);
+        idx2 = Math.floor(seededRandom() * w.length);
     }
     const temp = w[idx1];
     w[idx1] = w[idx2];
@@ -145,7 +156,7 @@ async function main() {
     
     // Mengacak (Shuffle) seluruh corpus agar bahasa tidak mengumpul di awal/akhir
     for (let i = allLines.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
+        const j = Math.floor(seededRandom() * (i + 1));
         [allLines[i], allLines[j]] = [allLines[j], allLines[i]];
     }
     
@@ -165,14 +176,14 @@ async function main() {
     // Simpan progres ke file setiap 1000 iterasi agar aman jika terputus
     for (let i = 0; i < numPairsToGenerate; i++) {
         // Ambil kalimat asli secara acak
-        const idxA = Math.floor(Math.random() * allLines.length);
+        const idxA = Math.floor(seededRandom() * allLines.length);
         const sentenceA = allLines[idxA];
         const wordsA = sentenceA.split(" ");
         
         let sentenceB = "";
         
         // Strategi Sampling untuk Variasi Dataset:
-        const randChoice = Math.random();
+        const randChoice = seededRandom();
         if (randChoice < 0.20) {
             // 20%: Identik / Hampir Identik (Positif)
             sentenceB = sentenceA; 
@@ -181,12 +192,12 @@ async function main() {
             sentenceB = createWordSwap(wordsA);
         } else if (randChoice < 0.70) {
             // 30%: CutMix (Gabungan Semantik)
-            const idxB = Math.floor(Math.random() * allLines.length);
+            const idxB = Math.floor(seededRandom() * allLines.length);
             const wordsB = allLines[idxB].split(" ");
             sentenceB = createCutMix(wordsA, wordsB);
         } else {
             // 30%: Pure Random (Random Negatives)
-            const idxB = Math.floor(Math.random() * allLines.length);
+            const idxB = Math.floor(seededRandom() * allLines.length);
             sentenceB = allLines[idxB];
         }
 

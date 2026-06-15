@@ -51,10 +51,6 @@ To resume training using the Unsupervised SimCSE pipeline:
 cargo run --release --bin train_simcse
 ```
 
-To run a direct side-by-side comparison against the MiniLM Teacher (requires Node.js wrapper):
-```bash
-npx tsx evaluate_snn_minilm.js
-```
 
 ## 📈 Evaluation Examples
 
