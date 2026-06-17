@@ -14,8 +14,8 @@ fn main() {
     // Gunakan d_model=64 yang dipakai di semua eksperimen.
     // max_seq_length di sini tidak mempengaruhi bentuk bobot,
     // hanya mempengaruhi ukuran buffer temporal (tidak disimpan).
-    let d_model = 64;
-    let max_seq_length = 64;
+    let d_model = 384;
+    let max_seq_length = 128;
 
     println!("Memuat tokenizer...");
     let tokenizer = BPETokenizer::load(vocab_path);

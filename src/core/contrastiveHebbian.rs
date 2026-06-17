@@ -86,8 +86,6 @@ pub fn distillationHebbian(
         let b_offset = (2 * i + 1) * sequence_length * d_model;
         
         let target_score = target_scores[i].clamp(0.0, 1.0);
-        let pull_weight = target_score;
-        let push_weight = 1.0 - target_score;
         
         let a_len = actual_lengths[2 * i];
         let b_len = actual_lengths[2 * i + 1];
@@ -103,16 +101,29 @@ pub fn distillationHebbian(
                 let a_s = spikes[idx_a];
                 let b_s = spikes[idx_b];
 
-                let mut pull = b_s - a_s;
-                pull *= pull_weight;
-
-                let push = a_s * b_s * margin * push_weight;
+                // Prediksi lokal SNN: 1.0 jika sama persis, 0.0 jika beda
+                let local_pred = if a_s == b_s { 1.0 } else { 0.0 };
                 
-                if pull != 0.0 || push != 0.0 {
-                    err_data[idx_a] += pull - push; 
-                    err_data[idx_b] += -pull - push;
+                // Rumus Murni (Target - Prediksi)
+                // Jika positif -> SNN kurang mirip, harus ditarik (Pull)
+                // Jika negatif -> SNN terlalu mirip, harus didorong (Push)
+                let error = target_score - local_pred;
+
+                let pull = b_s - a_s;
+                
+                // Pull Update: Terjadi ketika SNN harus lebih mirip (error positif)
+                let pull_update_a = pull * error.max(0.0) * margin;
+                let pull_update_b = -pull * error.max(0.0) * margin;
+
+                // Push Update: Terjadi ketika SNN harus lebih beda (error negatif)
+                // Hanya aktif jika keduanya menyala (a_s * b_s = 1) agar tidak mati berlebihan
+                let push_update = (a_s * b_s) * error.min(0.0) * margin;
+                
+                if pull_update_a != 0.0 || pull_update_b != 0.0 || push_update != 0.0 {
+                    err_data[idx_a] += pull_update_a + push_update; 
+                    err_data[idx_b] += pull_update_b + push_update;
                     
-                    total_loss += pull.abs() + push;
+                    total_loss += error.abs() * margin;
                 }
             }
         }

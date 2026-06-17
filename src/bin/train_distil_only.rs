@@ -76,12 +76,22 @@ fn evaluate_stsb(embedder: &mut SpikingSentenceEmbedder, eval_data: &[STSPair]) 
     let mut preds = Vec::new();
     let mut targets = Vec::new();
     let t0 = Instant::now();
-    for pair in eval_data {
+    
+    println!("    --- Contoh 5 Prediksi SNN vs Target Guru ---");
+    for (i, pair) in eval_data.iter().enumerate() {
         let s1 = pair.sentence1.to_lowercase();
         let s2 = pair.sentence2.to_lowercase();
         let embs = embedder.encode(&[s1.as_str(), s2.as_str()]);
-        preds.push(cosine_sim(&embs[0], &embs[1]));
+        let sim = cosine_sim(&embs[0], &embs[1]);
+        preds.push(sim);
         targets.push(pair.score);
+        
+        // Tampilkan 5 contoh pertama di log
+        if i < 5 {
+            println!("      S1: {}", pair.sentence1);
+            println!("      S2: {}", pair.sentence2);
+            println!("      SNN Pred: {:.4} | Target Guru: {:.4}\n", sim, pair.score);
+        }
     }
     let dur = t0.elapsed().as_secs_f64();
     let ms_per_pair = dur * 1000.0 / eval_data.len() as f64;
@@ -89,7 +99,8 @@ fn evaluate_stsb(embedder: &mut SpikingSentenceEmbedder, eval_data: &[STSPair]) 
 }
 
 fn train_distil(tokenizer: BPETokenizer, vocab_size: usize, init: &serde_json::Value, d_model: usize, use_init: bool, init_d_model: usize, max_seq_length: usize) -> SpikingSentenceEmbedder {
-    let dataset_path = "experiment/file_model/teacher_distillation_dataset.json";
+    // BUG FIX: Menggunakan dataset yang sudah di-scoring oleh Model Guru (Soft Labels)
+    let dataset_path = "experiment/file_model/teacher_distillation_dataset_scored.json";
     println!("Memuat dataset dari {}...", dataset_path);
     let f = File::open(dataset_path).expect("teacher_distillation_dataset.json tidak ditemukan");
     let dataset: Vec<PairScored> = serde_json::from_reader(BufReader::new(f)).unwrap();
@@ -104,7 +115,7 @@ fn train_distil(tokenizer: BPETokenizer, vocab_size: usize, init: &serde_json::V
 
     let num_pairs = 32;
     let steps_per_epoch = dataset.len() / num_pairs;
-    let num_epochs = 1; // Kembali ke 1 epoch untuk mencegah Catastrophic Forgetting pada SNN
+    let num_epochs = 2; // Kembalikan ke 2 Epoch. 5 Epoch terlalu lama dan membuat SNN rusak!
     let total_steps = steps_per_epoch * num_epochs;
     let mut step = 0;
     
@@ -124,13 +135,15 @@ fn train_distil(tokenizer: BPETokenizer, vocab_size: usize, init: &serde_json::V
             batch_texts.push(pair.s1.clone()); batch_texts.push(pair.s2.clone());
             batch_targets.push(pair.score);
             if batch_targets.len() == num_pairs {
-                // Menggunakan base LR yang sangat kecil (0.001) untuk menjaga kestabilan init_weights
-                let base_lr = if use_init { 0.001 } else { 0.01 };
-                let lr = base_lr * f32::max(0.01, 1.0 - (step as f32 / total_steps as f32));
+                let base_lr = if use_init { 0.0005 } else { 0.01 };
+                let progress = step as f32 / total_steps as f32;
+                // LR Scheduler: Cosine Annealing (bertahan tinggi di awal, melambat drastis di akhir)
+                let lr = base_lr * (0.01 + 0.99 * (0.5 * (1.0 + (progress * std::f32::consts::PI).cos())));
                 embedder.set_learning_rate(lr);
                 
                 let texts: Vec<&str> = batch_texts.iter().map(|s| s.as_str()).collect();
-                embedder.train_step_distill(&texts, &batch_targets, 0.2);
+                // Menurunkan margin dari 0.2 ke 0.05 agar evaluasi error lebih ketat
+                embedder.train_step_distill(&texts, &batch_targets, 0.05);
                 
                 batch_texts.clear(); batch_targets.clear(); step += 1;
                 
@@ -172,30 +185,7 @@ fn eval_all_datasets(embedder: &mut SpikingSentenceEmbedder) -> serde_json::Valu
     serde_json::Value::Object(results)
 }
 
-fn eval_train_subset(embedder: &mut SpikingSentenceEmbedder) {
-    let dataset_path = "experiment/file_model/teacher_distillation_dataset.json";
-    if let Ok(f) = File::open(dataset_path) {
-        if let Ok(dataset) = serde_json::from_reader::<_, Vec<PairScored>>(BufReader::new(f)) {
-            let subset_len = dataset.len() / 4; // Ambil 1/4 saja
-            println!("\n  [Evaluasi Overfitting pada 1/4 Data Train]");
-            
-            let mut preds = Vec::new();
-            let mut targets = Vec::new();
-            
-            for i in 0..subset_len {
-                let pair = &dataset[i];
-                let s1 = pair.s1.to_lowercase();
-                let s2 = pair.s2.to_lowercase();
-                let embs = embedder.encode(&[&s1, &s2]);
-                preds.push(cosine_sim(&embs[0], &embs[1]));
-                targets.push(pair.score);
-            }
-            
-            let r = pearson(&preds, &targets);
-            println!("    Train Dataset (1/4) | Pearson: {:.4}", r);
-        }
-    }
-}
+
 
 fn main() {
     let vocab_path = "experiment/file_model/vocab.json";
@@ -211,8 +201,8 @@ fn main() {
     let vocab_size = tokenizer.vocab_size();
 
     // Ubah nilai d_model dan max_seq_length di sini
-    let d_model = 64; 
-    let max_seq_length = 64;
+    let d_model = 384; 
+    let max_seq_length = 128;
 
     println!("Memuat bobot inisialisasi terkontrol dari {}...", init_path);
     let init = load_init(init_path);
@@ -227,9 +217,7 @@ fn main() {
     let mut all_results = serde_json::Map::new();
     let result = eval_all_datasets(&mut embedder);
     
-    // Panggil evaluasi data train untuk mengecek overfitting
-    eval_train_subset(&mut embedder);
-    
+
     all_results.insert("Knowledge Distillation".to_string(), json!({
         "train_time_seconds": train_secs,
         "results": result
