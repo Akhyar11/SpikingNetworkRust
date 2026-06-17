@@ -44,10 +44,7 @@ pub fn contrastiveHebbian(
                 let n1_s = spikes[idx_n1];
                 let n2_s = if has_hard_negative { spikes[n2_offset + s * d_model + d] } else { 0.0 };
 
-                let mut pull = p_s - q_s;
-                if q_s == 0.0 && p_s == 0.0 && n1_s == 0.0 {
-                    pull = 0.05;
-                }
+                let pull = p_s - q_s;
                 
                 let push1 = q_s * n1_s * margin; 
                 let push2 = if has_hard_negative { q_s * n2_s * margin * 0.2 } else { 0.0 };
@@ -89,8 +86,6 @@ pub fn distillationHebbian(
         let b_offset = (2 * i + 1) * sequence_length * d_model;
         
         let target_score = target_scores[i].clamp(0.0, 1.0);
-        let pull_weight = target_score;
-        let push_weight = 1.0 - target_score;
         
         let a_len = actual_lengths[2 * i];
         let b_len = actual_lengths[2 * i + 1];
@@ -106,19 +101,29 @@ pub fn distillationHebbian(
                 let a_s = spikes[idx_a];
                 let b_s = spikes[idx_b];
 
-                let mut pull = b_s - a_s;
-                if a_s == 0.0 && b_s == 0.0 {
-                    pull = 0.05;
-                }
-                pull *= pull_weight;
-
-                let push = a_s * b_s * margin * push_weight;
+                // Local SNN prediction: 1.0 if identical, 0.0 if different
+                let local_pred = if a_s == b_s { 1.0 } else { 0.0 };
                 
-                if pull != 0.0 || push != 0.0 {
-                    err_data[idx_a] += pull - push; 
-                    err_data[idx_b] += -pull - push;
+                // Pure Formula (Target - Prediction)
+                // If positive -> SNN is less similar than teacher, must be pulled (Pull)
+                // If negative -> SNN is more similar than teacher, must be pushed (Push)
+                let error = target_score - local_pred;
+
+                let pull = b_s - a_s;
+                
+                // Pull Update: Occurs when SNN should be more similar (positive error)
+                let pull_update_a = pull * error.max(0.0) * margin;
+                let pull_update_b = -pull * error.max(0.0) * margin;
+
+                // Push Update: Occurs when SNN should be more different (negative error)
+                // Only active if both spike (a_s * b_s = 1.0) to prevent catastrophic death
+                let push_update = (a_s * b_s) * error.min(0.0) * margin;
+                
+                if pull_update_a != 0.0 || pull_update_b != 0.0 || push_update != 0.0 {
+                    err_data[idx_a] += pull_update_a + push_update; 
+                    err_data[idx_b] += pull_update_b + push_update;
                     
-                    total_loss += pull.abs() + push;
+                    total_loss += error.abs() * margin;
                 }
             }
         }

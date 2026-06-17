@@ -100,7 +100,7 @@ impl SpikingSelfAttention {
         let batch = batch_seq / self.sequence_length;
         
         if batch * self.sequence_length != batch_seq {
-            panic!("Jumlah input tidak sesuai dengan kelipatan sequence_length!");
+            panic!("Input count does not match a multiple of sequence_length!");
         }
 
         self.reset_state(batch);
@@ -205,7 +205,7 @@ impl SpikingSelfAttention {
     }
 
     pub fn learn_attention(&mut self, error_signal: &[f32], actual_lengths: &[usize]) {
-        let inputs = self.last_inputs.as_ref().expect("Panggil forward() dulu!");
+        let inputs = self.last_inputs.as_ref().expect("Call forward() first!");
         let _batch_seq = inputs.len() / self.d_model;
         let batch_size = actual_lengths.len();
         let lr = self.base.learning_rate;

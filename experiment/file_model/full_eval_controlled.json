@@ -3,325 +3,360 @@
   "evaluation": {
     "Ablation: No-Attention": {
       "results": {
+        "All-STS-Teacher": {
+          "ms_per_pair": 1.6848347034320321,
+          "n_pairs": 29720,
+          "pearson": 0.7471222877502441
+        },
         "SICK-R": {
-          "ms_per_pair": 0.8432188977536014,
+          "ms_per_pair": 1.54136749108492,
           "n_pairs": 9927,
-          "pearson": 0.39047300815582275
+          "pearson": 0.42324298620224
         },
         "STS-12": {
-          "ms_per_pair": 0.8685198153153153,
+          "ms_per_pair": 1.7537838014800513,
           "n_pairs": 3108,
-          "pearson": 0.4144718050956726
+          "pearson": 0.45879051089286804
         },
         "STS-13": {
-          "ms_per_pair": 0.8463095446666666,
+          "ms_per_pair": 1.626452982,
           "n_pairs": 1500,
-          "pearson": 0.4197160303592682
+          "pearson": 0.4431300163269043
         },
         "STS-14": {
-          "ms_per_pair": 0.8908269157333334,
+          "ms_per_pair": 1.6760587170666668,
           "n_pairs": 3750,
-          "pearson": 0.4467412531375885
+          "pearson": 0.4751637578010559
         },
         "STS-15": {
-          "ms_per_pair": 0.8646845153333333,
+          "ms_per_pair": 1.7023224980000002,
           "n_pairs": 3000,
-          "pearson": 0.4637439250946045
+          "pearson": 0.5187556743621826
         },
         "STS-16": {
-          "ms_per_pair": 0.8556917537942663,
+          "ms_per_pair": 1.7704120935919052,
           "n_pairs": 1186,
-          "pearson": 0.3394203782081604
+          "pearson": 0.3625486493110657
         },
         "STS-B": {
-          "ms_per_pair": 0.8797608459999999,
+          "ms_per_pair": 1.7415553646666668,
           "n_pairs": 1500,
-          "pearson": 0.6171419024467468
+          "pearson": 0.6856297850608826
         },
         "_energy": {
-          "average_spikes_per_sentence": 504.58491510575277,
-          "energy_savings_ratio": 158.29248479071185,
-          "snn_sops_per_sentence": 64586.869133536355,
-          "transformer_macs_estimated": 10223616.0
+          "average_spikes_per_sentence": 3922.2290514238884,
+          "energy_savings_ratio": 476.202683604605,
+          "snn_sops_per_sentence": 3012271.9114935463,
+          "transformer_macs_estimated": 1434451968.0
         }
       },
-      "train_time_seconds": 32.535584297
+      "train_time_seconds": 1208.522581308
     },
     "Ablation: T=16": {
       "results": {
+        "All-STS-Teacher": {
+          "ms_per_pair": 1.5964699766823687,
+          "n_pairs": 29720,
+          "pearson": 0.727239727973938
+        },
         "SICK-R": {
-          "ms_per_pair": 0.6163500400926766,
+          "ms_per_pair": 1.4738059977838218,
           "n_pairs": 9927,
-          "pearson": 0.40486782789230347
+          "pearson": 0.4295946955680847
         },
         "STS-12": {
-          "ms_per_pair": 0.6526365675675676,
+          "ms_per_pair": 1.6149812313384815,
           "n_pairs": 3108,
-          "pearson": 0.43750134110450745
+          "pearson": 0.46347615122795105
         },
         "STS-13": {
-          "ms_per_pair": 0.6473331273333334,
+          "ms_per_pair": 1.5910708593333331,
           "n_pairs": 1500,
-          "pearson": 0.40126630663871765
+          "pearson": 0.4243229627609253
         },
         "STS-14": {
-          "ms_per_pair": 0.6454648101333333,
+          "ms_per_pair": 1.6378447514666667,
           "n_pairs": 3750,
-          "pearson": 0.41069328784942627
+          "pearson": 0.4357394874095917
         },
         "STS-15": {
-          "ms_per_pair": 0.675633139,
+          "ms_per_pair": 1.6415118679999998,
           "n_pairs": 3000,
-          "pearson": 0.46908703446388245
+          "pearson": 0.519224226474762
         },
         "STS-16": {
-          "ms_per_pair": 0.6693269451939292,
+          "ms_per_pair": 1.729291950252951,
           "n_pairs": 1186,
-          "pearson": 0.31582608819007874
+          "pearson": 0.35460275411605835
         },
         "STS-B": {
-          "ms_per_pair": 0.674360504,
+          "ms_per_pair": 1.6299808166666667,
           "n_pairs": 1500,
-          "pearson": 0.5778147578239441
+          "pearson": 0.6338964700698853
         },
         "_energy": {
-          "average_spikes_per_sentence": 468.7112344082433,
-          "energy_savings_ratio": 170.4076927041015,
-          "snn_sops_per_sentence": 59995.03800425514,
-          "transformer_macs_estimated": 10223616.0
+          "average_spikes_per_sentence": 3556.479298206403,
+          "energy_savings_ratio": 525.1755580137788,
+          "snn_sops_per_sentence": 2731376.101022518,
+          "transformer_macs_estimated": 1434451968.0
         }
       },
-      "train_time_seconds": 23.444585449
+      "train_time_seconds": 1014.297351042
     },
     "Ablation: T=64": {
       "results": {
+        "All-STS-Teacher": {
+          "ms_per_pair": 3.4971158635935393,
+          "n_pairs": 29720,
+          "pearson": 0.7490633726119995
+        },
         "SICK-R": {
-          "ms_per_pair": 1.890787734159363,
+          "ms_per_pair": 3.2888607334542157,
           "n_pairs": 9927,
-          "pearson": 0.3960399329662323
+          "pearson": 0.42968669533729553
         },
         "STS-12": {
-          "ms_per_pair": 1.8979934684684685,
+          "ms_per_pair": 3.6529223655083656,
           "n_pairs": 3108,
-          "pearson": 0.43407291173934937
+          "pearson": 0.449477881193161
         },
         "STS-13": {
-          "ms_per_pair": 1.9348085599999998,
+          "ms_per_pair": 3.4907276019999998,
           "n_pairs": 1500,
-          "pearson": 0.42298343777656555
+          "pearson": 0.44182443618774414
         },
         "STS-14": {
-          "ms_per_pair": 1.8797855098666667,
+          "ms_per_pair": 3.5361416434666664,
           "n_pairs": 3750,
-          "pearson": 0.46063199639320374
+          "pearson": 0.47429966926574707
         },
         "STS-15": {
-          "ms_per_pair": 1.8961758223333334,
+          "ms_per_pair": 3.542222194333333,
           "n_pairs": 3000,
-          "pearson": 0.4720950722694397
+          "pearson": 0.5160307288169861
         },
         "STS-16": {
-          "ms_per_pair": 1.9276586593591905,
+          "ms_per_pair": 3.7084934207419895,
           "n_pairs": 1186,
-          "pearson": 0.34017470479011536
+          "pearson": 0.36504948139190674
         },
         "STS-B": {
-          "ms_per_pair": 1.9330624179999998,
+          "ms_per_pair": 3.6316509726666664,
           "n_pairs": 1500,
-          "pearson": 0.6298525929450989
+          "pearson": 0.6919988393783569
         },
         "_energy": {
-          "average_spikes_per_sentence": 498.42088356764424,
-          "energy_savings_ratio": 160.25010715499045,
-          "snn_sops_per_sentence": 63797.87309665846,
-          "transformer_macs_estimated": 10223616.0
+          "average_spikes_per_sentence": 3994.3100147138252,
+          "energy_savings_ratio": 467.609172327556,
+          "snn_sops_per_sentence": 3067630.091300218,
+          "transformer_macs_estimated": 1434451968.0
         }
       },
-      "train_time_seconds": 45.272172597
+      "train_time_seconds": 1424.72050717
     },
-    "Human-Only (STS-B)": {
+    "Human-Only (STS-B) [384d, T=128]": {
       "results": {
+        "All-STS-Teacher": {
+          "ms_per_pair": 5.936020538997309,
+          "n_pairs": 29720,
+          "pearson": 0.7265605926513672
+        },
         "SICK-R": {
-          "ms_per_pair": 1.0535126244585473,
+          "ms_per_pair": 5.693952422282663,
           "n_pairs": 9927,
-          "pearson": 0.3714919984340668
+          "pearson": 0.40794917941093445
         },
         "STS-12": {
-          "ms_per_pair": 1.077624771879022,
+          "ms_per_pair": 5.962228579150579,
           "n_pairs": 3108,
-          "pearson": 0.3783858120441437
+          "pearson": 0.4243698716163635
         },
         "STS-13": {
-          "ms_per_pair": 1.0488315300000002,
+          "ms_per_pair": 5.834292467999999,
           "n_pairs": 1500,
-          "pearson": 0.38480231165885925
+          "pearson": 0.4310552477836609
         },
         "STS-14": {
-          "ms_per_pair": 1.0307520306666667,
+          "ms_per_pair": 5.8898851616,
           "n_pairs": 3750,
-          "pearson": 0.41910576820373535
+          "pearson": 0.45760849118232727
         },
         "STS-15": {
-          "ms_per_pair": 1.029916756,
+          "ms_per_pair": 5.918845923666668,
           "n_pairs": 3000,
-          "pearson": 0.4576113820075989
+          "pearson": 0.5043380260467529
         },
         "STS-16": {
-          "ms_per_pair": 1.1079753246205732,
+          "ms_per_pair": 6.11226765598651,
           "n_pairs": 1186,
-          "pearson": 0.36078450083732605
+          "pearson": 0.3733871579170227
         },
         "STS-B": {
-          "ms_per_pair": 1.026998418,
+          "ms_per_pair": 5.907689852666667,
           "n_pairs": 1500,
-          "pearson": 0.5924116373062134
+          "pearson": 0.669992208480835
         },
         "_energy": {
-          "average_spikes_per_sentence": 641.9105585916316,
-          "energy_savings_ratio": 124.42854994509085,
-          "snn_sops_per_sentence": 82164.55149972884,
-          "transformer_macs_estimated": 10223616.0
+          "average_spikes_per_sentence": 4134.179527295078,
+          "energy_savings_ratio": 451.78879815653625,
+          "snn_sops_per_sentence": 3175049.8769626194,
+          "transformer_macs_estimated": 1434451968.0
         }
       },
-      "train_time_seconds": 3.615147178
+      "train_time_seconds": 57.677262656
     },
-    "Knowledge Distillation (AI) [T=32]": {
+    "Knowledge Distillation (AI) [384d, T=128]": {
       "results": {
+        "All-STS-Teacher": {
+          "ms_per_pair": 5.965712053297443,
+          "n_pairs": 29720,
+          "pearson": 0.7514241337776184
+        },
         "SICK-R": {
-          "ms_per_pair": 1.0094046911453611,
+          "ms_per_pair": 5.741265259091366,
           "n_pairs": 9927,
-          "pearson": 0.39047300815582275
+          "pearson": 0.42428550124168396
         },
         "STS-12": {
-          "ms_per_pair": 1.056882285070785,
+          "ms_per_pair": 6.095745550514801,
           "n_pairs": 3108,
-          "pearson": 0.4144718050956726
+          "pearson": 0.4639745354652405
         },
         "STS-13": {
-          "ms_per_pair": 1.057015892,
+          "ms_per_pair": 6.012834591999999,
           "n_pairs": 1500,
-          "pearson": 0.4197160303592682
+          "pearson": 0.43823644518852234
         },
         "STS-14": {
-          "ms_per_pair": 1.0321029231999999,
+          "ms_per_pair": 5.990707363733334,
           "n_pairs": 3750,
-          "pearson": 0.4467412531375885
+          "pearson": 0.4760242998600006
         },
         "STS-15": {
-          "ms_per_pair": 1.0409128343333334,
+          "ms_per_pair": 6.016099202,
           "n_pairs": 3000,
-          "pearson": 0.4637439250946045
+          "pearson": 0.5189185738563538
         },
         "STS-16": {
-          "ms_per_pair": 1.1146761298482293,
+          "ms_per_pair": 6.168406882799325,
           "n_pairs": 1186,
-          "pearson": 0.3394203782081604
+          "pearson": 0.3698132038116455
         },
         "STS-B": {
-          "ms_per_pair": 1.066451858,
+          "ms_per_pair": 6.080031062,
           "n_pairs": 1500,
-          "pearson": 0.6171419024467468
+          "pearson": 0.6913212537765503
         },
         "_energy": {
-          "average_spikes_per_sentence": 504.58491510575277,
-          "energy_savings_ratio": 158.29248479071185,
-          "snn_sops_per_sentence": 64586.869133536355,
-          "transformer_macs_estimated": 10223616.0
+          "average_spikes_per_sentence": 3990.77541859902,
+          "energy_savings_ratio": 468.0233298258841,
+          "snn_sops_per_sentence": 3064915.5214840476,
+          "transformer_macs_estimated": 1434451968.0
         }
       },
-      "train_time_seconds": 31.526759626
+      "train_time_seconds": 1890.496555337
     },
     "Knowledge Distillation (Homogeneous)": {
       "results": {
+        "All-STS-Teacher": {
+          "ms_per_pair": 5.716628306729476,
+          "n_pairs": 29720,
+          "pearson": 0.7580876350402832
+        },
         "SICK-R": {
-          "ms_per_pair": 1.006059216077365,
+          "ms_per_pair": 5.521435764883651,
           "n_pairs": 9927,
-          "pearson": 0.3383427560329437
+          "pearson": 0.443569540977478
         },
         "STS-12": {
-          "ms_per_pair": 1.0332387380952381,
+          "ms_per_pair": 5.898118342985843,
           "n_pairs": 3108,
-          "pearson": 0.3114064335823059
+          "pearson": 0.4741477966308594
         },
         "STS-13": {
-          "ms_per_pair": 1.0572327386666667,
+          "ms_per_pair": 5.761670854,
           "n_pairs": 1500,
-          "pearson": 0.3993591070175171
+          "pearson": 0.45025861263275146
         },
         "STS-14": {
-          "ms_per_pair": 1.0166721376,
+          "ms_per_pair": 5.840823679733333,
           "n_pairs": 3750,
-          "pearson": 0.41816791892051697
+          "pearson": 0.48138684034347534
         },
         "STS-15": {
-          "ms_per_pair": 1.0415330943333334,
+          "ms_per_pair": 5.817918061333334,
           "n_pairs": 3000,
-          "pearson": 0.45180606842041016
+          "pearson": 0.5357455015182495
         },
         "STS-16": {
-          "ms_per_pair": 1.0398572849915682,
+          "ms_per_pair": 5.9268380193929175,
           "n_pairs": 1186,
-          "pearson": 0.3202838897705078
+          "pearson": 0.3875124156475067
         },
         "STS-B": {
-          "ms_per_pair": 1.0460356186666668,
+          "ms_per_pair": 5.888091542666667,
           "n_pairs": 1500,
-          "pearson": 0.5212276577949524
+          "pearson": 0.6959257125854492
         },
         "_energy": {
-          "average_spikes_per_sentence": 199.2306537065621,
-          "energy_savings_ratio": 400.9021629655439,
-          "snn_sops_per_sentence": 25501.523674439948,
-          "transformer_macs_estimated": 10223616.0
+          "average_spikes_per_sentence": 2494.1109869438083,
+          "energy_savings_ratio": 748.8744525714568,
+          "snn_sops_per_sentence": 1915477.2379728446,
+          "transformer_macs_estimated": 1434451968.0
         }
       },
-      "train_time_seconds": 26.196013247
+      "train_time_seconds": 1494.750027101
     },
-    "Unsupervised SimCSE": {
+    "Unsupervised SimCSE [384d, T=128]": {
       "results": {
+        "All-STS-Teacher": {
+          "ms_per_pair": 6.327060600100943,
+          "n_pairs": 29720,
+          "pearson": 0.5831401944160461
+        },
         "SICK-R": {
-          "ms_per_pair": 1.1066069570867332,
+          "ms_per_pair": 6.073518312481112,
           "n_pairs": 9927,
-          "pearson": 0.3818129003047943
+          "pearson": 0.35814499855041504
         },
         "STS-12": {
-          "ms_per_pair": 1.154824268018018,
+          "ms_per_pair": 6.35802798069498,
           "n_pairs": 3108,
-          "pearson": 0.29988449811935425
+          "pearson": 0.32394757866859436
         },
         "STS-13": {
-          "ms_per_pair": 1.1233747793333333,
+          "ms_per_pair": 6.184032050000001,
           "n_pairs": 1500,
-          "pearson": 0.30161795020103455
+          "pearson": 0.3459000587463379
         },
         "STS-14": {
-          "ms_per_pair": 1.1644667968,
+          "ms_per_pair": 6.219386281599999,
           "n_pairs": 3750,
-          "pearson": 0.339535117149353
+          "pearson": 0.36383503675460815
         },
         "STS-15": {
-          "ms_per_pair": 1.1575132826666665,
+          "ms_per_pair": 6.284844047,
           "n_pairs": 3000,
-          "pearson": 0.31827759742736816
+          "pearson": 0.43362152576446533
         },
         "STS-16": {
-          "ms_per_pair": 1.1886938878583473,
+          "ms_per_pair": 6.518243589376055,
           "n_pairs": 1186,
-          "pearson": 0.2403915375471115
+          "pearson": 0.312730610370636
         },
         "STS-B": {
-          "ms_per_pair": 1.223274578,
+          "ms_per_pair": 6.321153962,
           "n_pairs": 1500,
-          "pearson": 0.4922950863838196
+          "pearson": 0.5245099663734436
         },
         "_energy": {
-          "average_spikes_per_sentence": 1571.8287722664886,
-          "energy_savings_ratio": 86.15883062310733,
-          "snn_sops_per_sentence": 118660.10629510658,
-          "transformer_macs_estimated": 10223616.0
+          "average_spikes_per_sentence": 9005.366923692984,
+          "energy_savings_ratio": 331.4872020366254,
+          "snn_sops_per_sentence": 4327322.319494887,
+          "transformer_macs_estimated": 1434451968.0
         }
       },
-      "train_time_seconds": 29.465958006
+      "train_time_seconds": 834.773304392
     }
   },
   "init_weights_file": "experiment/file_model/init_weights.json"

@@ -1,0 +1,22 @@
+{
+  "controlled_initialization": true,
+  "evaluation": {
+    "Knowledge Distillation": {
+      "results": {
+        "All-STS-Teacher": {
+          "ms_per_pair": 6.5753512091184385,
+          "n_pairs": 29720,
+          "pearson": 0.7514241337776184
+        },
+        "_energy": {
+          "average_spikes_per_sentence": 4043.674798115747,
+          "energy_savings_ratio": 3.2920550401835142,
+          "snn_sops_per_sentence": 3105542.244952894,
+          "transformer_macs_estimated": 10223616.0
+        }
+      },
+      "train_time_seconds": 2041.645556568
+    }
+  },
+  "init_weights_file": "experiment/file_model/init_weights.json"
+}

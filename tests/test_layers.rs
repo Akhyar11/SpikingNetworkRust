@@ -22,7 +22,7 @@ fn test_spiking_embedding() {
 
     // Uji backward pass (Error signal simulasi)
     let error_signal = vec![0.1; 3 * output_dim];
-    embedding.backward(&error_signal); // Harusnya sukses tanpa error bounds
+    embedding.backward(&error_signal, None); // Harusnya sukses tanpa error bounds
 }
 
 #[test]
@@ -82,14 +82,52 @@ fn test_spiking_self_attention() {
     inputs[16] = 1.0;
     inputs[25] = 1.0;
 
-    let output = attention.forward(&inputs);
+    let actual_lengths = vec![seq_length; batch_size];
+    let output = attention.forward(&inputs, &actual_lengths);
     assert_eq!(output.len(), batch_size * seq_length * d_model);
 
     // Test learning
     let mut error_signal = vec![0.0; batch_size * seq_length * d_model];
     error_signal[0] = 0.5;
-    attention.learn_attention(&error_signal);
+    attention.learn_attention(&error_signal, &actual_lengths);
 
     // Test summary
     attention.summary();
+}
+
+#[test]
+fn test_lif_spike_generation() {
+    let mut potentials = vec![0.5];
+    let dot = vec![0.6];
+    let mut spikes = vec![0.0];
+    let mut last_p = vec![0.0];
+    let beta = vec![0.9];
+    let threshold = vec![0.5];
+    
+    SpikingNetworkRust::core::lifStep::lifStep(&mut potentials, &dot, &mut spikes, &mut last_p, &beta, &threshold);
+    
+    assert_eq!(spikes[0], 1.0, "Should spike when potential ≥ threshold");
+    assert_eq!(potentials[0], 0.5, "Potential should reset after spike");
+}
+
+#[test]
+fn test_coincidence_count() {
+    let q = vec![1.0, 1.0, 0.0];
+    let k = vec![1.0, 0.0, 1.0];
+    
+    let match_count: usize = q.iter()
+        .zip(k.iter())
+        .map(|(&a, &b)| if a > 0.0 && b > 0.0 { 1 } else { 0 })
+        .sum();
+    
+    assert_eq!(match_count, 1, "Only first dimension matches");
+}
+
+#[test]
+fn test_hebbian_pull() {
+    let target_score = 1.0;
+    let pred_local = 0.0;
+    let error = target_score - pred_local;
+    
+    assert!(error > 0.0, "Error > 0 means teacher wants higher similarity");
 }

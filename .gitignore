@@ -8,3 +8,5 @@ dataset/
 /experiment/file_model/saved_model_distil.json
 /experiment/file_model/saved_model.json
 /experiment/file_model/init_weights.json
+
+*/**/node_modules
