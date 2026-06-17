@@ -15,7 +15,10 @@ import numpy as np
 from scipy.stats import pearsonr
 from collections import Counter
 
-STS_PATH  = "experiment/file_model/sts-b_valid.json"
+DATASETS = {
+    "STS-B": "experiment/file_model/sts-b_valid.json",
+    "All-STS-Teacher": "experiment/file_model/all_sts_teacher_scored.json"
+}
 OUT_PATH  = "experiment/file_model/baseline_results.json"
 
 # ─── Utilities ────────────────────────────────────────────────────────────────
@@ -36,8 +39,8 @@ def pearson(preds: list, targets: list) -> float:
     r, _ = pearsonr(preds, targets)
     return round(float(r), 4)
 
-def load_stsb() -> list[dict]:
-    with open(STS_PATH) as f:
+def load_dataset(path: str) -> list[dict]:
+    with open(path) as f:
         return json.load(f)
 
 def print_header(title: str):
@@ -115,7 +118,7 @@ def mean_embed(tokens: list[str], model) -> np.ndarray:
         return np.zeros(model.vector_size)
     return np.mean(vecs, axis=0)
 
-def run_gensim_baseline(name: str, model_key: str, data: list[dict]) -> dict:
+def run_gensim_baseline(name: str, model_key: str, datasets_data: dict) -> dict:
     print_header(f"BASELINE: {name}  [{model_key}]")
     try:
         import gensim.downloader as api
@@ -125,23 +128,26 @@ def run_gensim_baseline(name: str, model_key: str, data: list[dict]) -> dict:
         load_sec = time.time() - t_load
         print(f"  Load selesai dalam {load_sec:.1f}s  |  dim={model.vector_size}  |  vocab={len(model)}")
 
-        t0 = time.time()
-        preds, targets = [], []
-        for item in data:
-            t1 = tokenize(item["sentence1"])
-            t2 = tokenize(item["sentence2"])
-            v1 = mean_embed(t1, model)
-            v2 = mean_embed(t2, model)
-            preds.append(cosine_sim_centered(v1, v2))
-            targets.append(item["score"])
-        elapsed = time.time() - t0
-        r = pearson(preds, targets)
-        ms = elapsed * 1000 / len(data)
-        print(f"  Pearson r : {r:.4f}")
-        print(f"  ms/pair   : {ms:.3f}")
+        results_dict = {}
+        for ds_name, data in datasets_data.items():
+            print(f"  Evaluasi pada {ds_name} ({len(data)} pasang)...")
+            t0 = time.time()
+            preds, targets = [], []
+            for item in data:
+                t1 = tokenize(item["sentence1"])
+                t2 = tokenize(item["sentence2"])
+                v1 = mean_embed(t1, model)
+                v2 = mean_embed(t2, model)
+                preds.append(cosine_sim_centered(v1, v2))
+                targets.append(item["score"])
+            elapsed = time.time() - t0
+            r = pearson(preds, targets)
+            ms = elapsed * 1000 / len(data)
+            print(f"    Pearson r : {r:.4f} | ms/pair: {ms:.3f}")
+            results_dict[ds_name] = {"pearson": r, "ms_per_pair": round(ms, 3)}
+        
         return {
-            "pearson": r,
-            "ms_per_pair": round(ms, 3),
+            "results": results_dict,
             "dim": model.vector_size,
             "vocab_size": len(model),
             "model_key": model_key,
@@ -153,54 +159,54 @@ def run_gensim_baseline(name: str, model_key: str, data: list[dict]) -> dict:
 # ─── Main ─────────────────────────────────────────────────────────────────────
 
 def main():
-    data = load_stsb()
-    print(f"Dataset STS-B validation: {len(data)} pasangan kalimat")
+    datasets_data = {}
+    for name, path in DATASETS.items():
+        try:
+            d = load_dataset(path)
+            datasets_data[name] = d
+            print(f"Dataset {name}: {len(d)} pasangan kalimat")
+        except Exception as e:
+            print(f"Gagal memuat {name}: {e}")
 
     results = {}
 
-    # Floor baseline
-    results["Random-300d"]   = baseline_random(data)
-
-    # TF-IDF (zero external deps)
-    results["TF-IDF"]        = baseline_tfidf(data)
-
-    # GloVe 100d (sekitar 128MB, lebih cepat diunduh)
+    # TF-IDF dan Random saya lewati dulu agar output rapi, kita fokus pada GloVe dan Word2Vec.
+    # GloVe 100d
     results["GloVe-100d"]    = run_gensim_baseline(
-        "GloVe Wikipedia+Gigaword 100d", "glove-wiki-gigaword-100", data)
+        "GloVe Wikipedia+Gigaword 100d", "glove-wiki-gigaword-100", datasets_data)
 
     # GloVe 300d
     results["GloVe-300d"]    = run_gensim_baseline(
-        "GloVe Wikipedia+Gigaword 300d", "glove-wiki-gigaword-300", data)
+        "GloVe Wikipedia+Gigaword 300d", "glove-wiki-gigaword-300", datasets_data)
 
-    # Word2Vec Google News 300d (~1.6GB — bisa di-skip jika koneksi lambat)
+    # Word2Vec Google News 300d
     results["Word2Vec-300d"] = run_gensim_baseline(
-        "Word2Vec Google News 300d", "word2vec-google-news-300", data)
+        "Word2Vec Google News 300d", "word2vec-google-news-300", datasets_data)
 
     # ─── Ringkasan ────────────────────────────────────────────────────────────
-    print(f"\n{'='*60}")
-    print("  TABEL PERBANDINGAN — Baseline Non-SNN vs SNN Kami")
-    print(f"{'='*60}")
-    print(f"  {'Model':<28} | {'Pearson (r)':>11} | {'ms/pair':>8}")
-    print(f"  {'-'*28}-+-{'-'*11}-+-{'-'*8}")
+    print(f"\n{'='*80}")
+    print("  TABEL PERBANDINGAN — Baseline Non-SNN")
+    print(f"{'='*80}")
+    print(f"  {'Model':<28} | {'STS-B (r)':>11} | {'Teacher (r)':>11} | {'ms/pair':>8}")
+    print(f"  {'-'*28}-+-{'-'*11}-+-{'-'*11}-+-{'-'*8}")
 
     rows = [
-        ("Random-300d (floor)",      results.get("Random-300d", {}).get("pearson", "N/A")),
-        ("TF-IDF Cosine",            results.get("TF-IDF", {}).get("pearson", "N/A")),
-        ("GloVe 100d (mean pool)",   results.get("GloVe-100d", {}).get("pearson", "N/A")),
-        ("GloVe 300d (mean pool)",   results.get("GloVe-300d", {}).get("pearson", "N/A")),
-        ("Word2Vec 300d (mean pool)",results.get("Word2Vec-300d", {}).get("pearson", "N/A")),
-        # SNN kita (dari full_eval_controlled.json)
-        ("─── SNN Ours ───────────────", "──────"),
-        ("SNN-T32+Att (Human-Only)", 0.6091),
-        ("SNN-T32+Att (Distil AI)",  0.6315),   # best
+        "GloVe-100d",
+        "GloVe-300d",
+        "Word2Vec-300d",
     ]
-    for label, r in rows:
-        r_str = f"{r:.4f}" if isinstance(r, float) else str(r)
-        ms_val = results.get(label.split("(")[0].strip(), {}).get("ms_per_pair", "")
-        ms_str = f"{ms_val:.3f}" if isinstance(ms_val, float) else "~1.05"
-        print(f"  {label:<28} | {r_str:>11} | {ms_str:>8}")
+    for key in rows:
+        r_stsb = results.get(key, {}).get("results", {}).get("STS-B", {}).get("pearson", "N/A")
+        r_tch  = results.get(key, {}).get("results", {}).get("All-STS-Teacher", {}).get("pearson", "N/A")
+        ms_val = results.get(key, {}).get("results", {}).get("STS-B", {}).get("ms_per_pair", "N/A")
+        
+        str_stsb = f"{r_stsb:.4f}" if isinstance(r_stsb, float) else str(r_stsb)
+        str_tch  = f"{r_tch:.4f}" if isinstance(r_tch, float) else str(r_tch)
+        str_ms   = f"{ms_val:.3f}" if isinstance(ms_val, float) else str(ms_val)
+        
+        print(f"  {key:<28} | {str_stsb:>11} | {str_tch:>11} | {str_ms:>8}")
 
-    print(f"{'='*60}\n")
+    print(f"{'='*80}\n")
 
     # Simpan hasil JSON
     with open(OUT_PATH, "w") as f:

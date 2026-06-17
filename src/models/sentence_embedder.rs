@@ -93,6 +93,24 @@ impl SpikingSentenceEmbedder {
         self.use_attention = val;
     }
 
+    pub fn calculate_sops(&mut self) -> usize {
+        // SOPs = Σ(S_emb × 3d) + Σ(S_pool × d)
+        let embedding_contribution = self.metrics.embedding_spikes * 3 * self.embedding.output_dim;
+        let pooling_contribution = self.metrics.pooler_spikes * self.embedding.output_dim;
+        
+        let total = embedding_contribution + pooling_contribution;
+        self.metrics.total_sops = total;
+        
+        println!("SOP Breakdown:");
+        println!("  Embedding: {} × 3 × {} = {}", 
+            self.metrics.embedding_spikes, self.embedding.output_dim, embedding_contribution);
+        println!("  Pooling: {} × {} = {}", 
+            self.metrics.pooler_spikes, self.embedding.output_dim, pooling_contribution);
+        println!("  Total SOPs: {}", total);
+        
+        total
+    }
+
     fn zero_pad_token(&mut self) {
         for d in 0..self.embedding.output_dim {
             self.embedding.weights[d] = -1.0;

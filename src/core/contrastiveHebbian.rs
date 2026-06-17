@@ -101,22 +101,22 @@ pub fn distillationHebbian(
                 let a_s = spikes[idx_a];
                 let b_s = spikes[idx_b];
 
-                // Prediksi lokal SNN: 1.0 jika sama persis, 0.0 jika beda
+                // Local SNN prediction: 1.0 if identical, 0.0 if different
                 let local_pred = if a_s == b_s { 1.0 } else { 0.0 };
                 
-                // Rumus Murni (Target - Prediksi)
-                // Jika positif -> SNN kurang mirip, harus ditarik (Pull)
-                // Jika negatif -> SNN terlalu mirip, harus didorong (Push)
+                // Pure Formula (Target - Prediction)
+                // If positive -> SNN is less similar than teacher, must be pulled (Pull)
+                // If negative -> SNN is more similar than teacher, must be pushed (Push)
                 let error = target_score - local_pred;
 
                 let pull = b_s - a_s;
                 
-                // Pull Update: Terjadi ketika SNN harus lebih mirip (error positif)
+                // Pull Update: Occurs when SNN should be more similar (positive error)
                 let pull_update_a = pull * error.max(0.0) * margin;
                 let pull_update_b = -pull * error.max(0.0) * margin;
 
-                // Push Update: Terjadi ketika SNN harus lebih beda (error negatif)
-                // Hanya aktif jika keduanya menyala (a_s * b_s = 1) agar tidak mati berlebihan
+                // Push Update: Occurs when SNN should be more different (negative error)
+                // Only active if both spike (a_s * b_s = 1.0) to prevent catastrophic death
                 let push_update = (a_s * b_s) * error.min(0.0) * margin;
                 
                 if pull_update_a != 0.0 || pull_update_b != 0.0 || push_update != 0.0 {

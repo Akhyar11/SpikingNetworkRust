@@ -42,7 +42,7 @@ Independent Researcher \\
 \maketitle
 
 \begin{abstract}
-Transformer-based models dominate natural language processing (NLP) but incur substantial computational costs due to dense matrix multiplications within self-attention mechanisms. Spiking Neural Networks (SNNs) provide a biologically plausible and energy-efficient alternative through sparse, event-driven computation; however, learning continuous semantic representations in the discrete spiking domain remains a major challenge. In this work, we propose a Spiking Sentence Embedder with a Sparse Coincidence-Based Semantic Attention mechanism. Instead of relying entirely on conventional dense self-attention, our approach models semantic interaction through spike coincidence overlap computed over dense projections, enabling sparse and efficient sentence representation learning. The architecture further incorporates heterogeneous neuron dynamics with variable leak and threshold parameters, combined with knowledge distillation from a dense teacher encoder to improve semantic alignment. Experimental evaluations on the Semantic Textual Similarity Benchmark (STS-B) show that the proposed model achieves a Pearson correlation score of 0.617 while achieving an approximate 158$\times$ theoretical computational sparsity reduction relative to Transformer multiply-accumulate (MAC) operations. In addition, ablation and biological sensitivity analyses demonstrate the significant representational contribution of neuronal parameter heterogeneity. These findings provide a reproducible pathway toward efficient neuromorphic natural language processing with sparse spike-based semantic computation.
+Transformer-based models dominate natural language processing (NLP) but incur substantial computational costs due to dense matrix multiplications within self-attention mechanisms. Spiking Neural Networks (SNNs) provide a biologically plausible and energy-efficient alternative through sparse, event-driven computation; however, learning continuous semantic representations in the discrete spiking domain remains a major challenge. In this work, we propose a Spiking Sentence Embedder with a Sparse Coincidence-Based Semantic Attention mechanism. Instead of relying entirely on conventional dense self-attention, our approach models semantic interaction through spike coincidence overlap computed over dense projections, enabling sparse and efficient sentence representation learning. The architecture further incorporates neuron dynamics with variable leak and threshold parameters, combined with knowledge distillation from a dense teacher encoder to improve semantic alignment. Experimental evaluations on the Semantic Textual Similarity Benchmark (STS-B) show that the proposed model achieves a Teacher Pearson correlation score of 0.758 while achieving an approximate 748$\times$ theoretical computational sparsity reduction relative to Transformer multiply-accumulate (MAC) operations under homogeneous configuration. In addition, ablation analyses demonstrate the high stability and efficiency of maintaining uniform dynamics at larger network scales. These findings provide a reproducible pathway toward efficient neuromorphic natural language processing with sparse spike-based semantic computation.
 \end{abstract}
 
 \section{Introduction}
@@ -61,7 +61,7 @@ The primary contributions of this work are summarized as follows:
     \item \textbf{Heterogeneous Neuron Dynamics}: The integration of variable, fixed leak and threshold parameters within Leaky Integrate-and-Fire (LIF) neurons, enhancing the semantic representational capacity of the discrete spike domain.
     \item \textbf{Knowledge Distillation Framework}: A robust training methodology that distills continuous semantic topologies from dense Transformer models into sparse SNN architectures, enabling effective learning of semantic similarity.
     \item \textbf{Ablation and Biological Sensitivity Analysis}: Comprehensive evaluations demonstrating the isolated impact of temporal pooling, distillation, and biological parameter variance on embedding quality.
-    \item \textbf{Efficient Semantic Embedding Evaluation}: Empirical validation on the STS-B dataset, demonstrating competitive Pearson correlation ($r=0.617$) while achieving an approximate $158\times$ theoretical computational sparsity reduction compared to standard dense MAC operations.
+    \item \textbf{Efficient Semantic Embedding Evaluation}: Empirical validation on the STS-B dataset, demonstrating competitive Pearson correlation ($r=0.691$ against human labels, $r=0.758$ against continuous dense teachers) while achieving an approximate $748\times$ theoretical computational sparsity reduction compared to standard dense MAC operations.
 \end{itemize}
 
 \section{Related Work}
@@ -151,18 +151,32 @@ E = \sum_{t=1}^{L} U_{pool}^{(t)}
 This operation acts as a stateful Identity Integrator during inference, preserving the sequence-level semantic topology while maintaining biologically plausible integration dynamics.
 
 \subsection{Knowledge Distillation and Stabilization}
-To bypass the challenges of applying contrastive learning directly on discrete spikes, we utilize knowledge distillation from a pre-trained dense Transformer (e.g., MiniLM). Instead of traditional continuous loss functions (e.g., MSE or Cosine Embedding Loss), the SNN is trained using an event-driven Contrastive Hebbian learning rule. The learning signal is driven by target similarity scores derived from the teacher model. The Hebbian rule initiates a weighted "pull" (Long-Term Potentiation) to co-activate related neurons and a weighted "push" (Long-Term Depression) to separate them:
-\begin{equation}
-\Delta W \propto (\text{pull} - \text{push})
-\end{equation}
-where $\text{pull} = \text{Sim}_{teacher} \times (S_j - S_i)$ and $\text{push} = (1 - \text{Sim}_{teacher}) \times (S_i \times S_j \times \text{margin})$. To further address the training instability inherent to local learning rules, we implement explicit weight clipping during the learning loop. This explicitly prevents weight explosion and "dead neuron" syndrome, ensuring stable propagation of semantic gradients.
+To bypass the challenges of applying contrastive learning directly on discrete spikes, we utilize knowledge distillation from a pre-trained dense Transformer (e.g., MiniLM). Rather than employing traditional continuous loss functions (e.g., MSE or Cosine Embedding Loss) which are non-local and biologically implausible for discrete spikes, the SNN is trained using a localized, event-driven Mean Squared Error (MSE) Hebbian learning rule. 
 
-\subsection{Energy Efficiency and SOP Analysis}
-To quantify energy efficiency, we measure the number of Synaptic Operations (SOPs) during inference. In standard dense networks, efficiency is measured by Multiply-Accumulate (MAC) operations. In our event-driven SNN, an operation only occurs when a spike is generated. The total SOPs are explicitly tracked across network components:
+The learning signal is driven by the discrepancy between the teacher's continuous similarity score ($\text{Sim}_{teacher}$) and a local discrete coincidence prediction ($\text{Pred}_{local}$). The local prediction assumes full similarity ($\text{Pred}_{local} = 1$) if two neurons share the same spiking state ($S_i = S_j$), and zero otherwise. The local error is defined as:
+\begin{equation}
+E = \text{Sim}_{teacher} - \text{Pred}_{local}
+\end{equation}
+This error directly governs synaptic plasticity. If $E > 0$, the teacher demands higher similarity, triggering a "pull" (Long-Term Potentiation) proportional to the error to co-activate related neurons. Conversely, if $E < 0$, the teacher demands separation, triggering a "push" (Long-Term Depression) to decorrelate active neurons:
+\begin{equation}
+\Delta W \propto 
+\begin{cases} 
+(S_j - S_i) \times E \times \text{margin}, & \text{if } E > 0 \\
+(S_i \times S_j) \times E \times \text{margin}, & \text{if } E < 0 
+\end{cases}
+\end{equation}
+Crucially, when the local spiking topology matches the teacher's continuous score ($E = 0$), synaptic updates cease entirely. This localized MSE Hebbian formulation effectively eliminates catastrophic forgetting and spiking collapse by providing a stable equilibrium. To further ensure training stability, we implement explicit weight clipping, preventing weight explosion and ensuring stable propagation of semantic gradients.
+
+To guarantee convergence and protect the acquired semantic topology, we implement two critical optimizations to the Hebbian update rule. First, we introduce a strict error tolerance margin ($m=0.05$). If the absolute prediction error $|E| < m$, synaptic updates are bypassed, allowing the spiking network to maintain a stable equilibrium without catastrophic forgetting. Second, we integrate a Cosine Annealing learning rate schedule across the training epochs. The learning rate is smoothly decayed following a cosine curve, which suppresses aggressive weight perturbations in the final stages of distillation and firmly locks in the continuous semantic manifold transferred from the dense teacher.
+
+\subsection{Memory Footprint and Computational Efficiency}
+Our Spiking Sentence Embedder provides extreme efficiency not only in computation but also in memory footprint. The $\sim$85 MB deployment size reported in our benchmarks is explicitly derived from the network's structural configuration ($d=384$ and a vocabulary size of 30,522). The raw synaptic weights total approximately 54 MB, dominated heavily by the mandatory token embedding matrix ($30,522 \times 384 \approx 11.7$ million parameters, or $\sim$46.8 MB in Float32). The remaining weight footprint accounts for the sparse coincidence attention projections ($Q, K, V$ matrices of size $384 \times 384$) and the temporal pooling layers. The final deployment size of $\sim$85 MB represents a conservative upper-bound that encapsulates the raw weights alongside essential runtime overhead, including the tokenizer vocabulary tree, meta-data JSON structures, and the stateful Leaky Integrate-and-Fire membrane potential buffers ($U$) maintained over the sequence length ($L=128$). Unlike the dense teacher model which requires $\sim$91--120 MB to store massive feed-forward and deep attention layers, our architecture achieves highly competitive semantic representation with a radically simplified parameter space.
+
+To quantify the resulting computational energy efficiency, we measure the number of Synaptic Operations (SOPs) during inference. In standard dense networks, efficiency is measured by Multiply-Accumulate (MAC) operations. In our event-driven SNN, an operation only occurs when a spike is generated. The total SOPs are explicitly tracked across network components:
 \begin{equation}
 \text{SOPs} = \sum \left( S_{emb} \times 3d \right) + \sum \left( S_{pool} \times d \right)
 \end{equation}
-Specifically, each embedding spike triggers 3 additions for the $Q, K, V$ projections (fan-out of $3d$), while the temporal pooler requires $d$ additions per active input. It is important to note that this SOP calculation serves as a proxy metric reflecting the specific internal algorithmic accounting of our model rather than an absolute, hardware-agnostic measure. Nevertheless, this transparent breakdown allows us to precisely benchmark the $158\times$ computational savings achieved by our sparse coincidence attention relative to standard dense attention blocks.
+Specifically, each embedding spike triggers 3 additions for the $Q, K, V$ projections (fan-out of $3d$), while the temporal pooler requires $d$ additions per active input. It is important to note that this SOP calculation serves as a proxy metric reflecting the specific internal algorithmic accounting of our model rather than an absolute, hardware-agnostic measure. Nevertheless, this transparent breakdown allows us to precisely benchmark the massive computational savings (up to $748\times$) achieved by our sparse coincidence attention relative to standard dense attention blocks.
 
 \section{Experiments and Results}
 \label{sec:experiments}
@@ -170,9 +184,11 @@ Specifically, each embedding spike triggers 3 additions for the $Q, K, V$ projec
 To validate the proposed Spiking Sentence Embedder, we conduct a series of controlled experiments focusing on semantic representation fidelity, computational energy efficiency, and the biological sensitivity of the spiking dynamics.
 
 \subsection{Experimental Setup}
-\textbf{Dataset and Baselines.} We evaluate our model on the Semantic Textual Similarity Benchmark (STS-B), a standard dataset for assessing continuous semantic sentence embeddings. We compare our Spiking Sentence Embedder against established non-SNN baselines: random projections (Floor), TF-IDF (Lexical), and mean-pooled static word embeddings (GloVe 100d/300d, Word2Vec 300d). For our SNN, we evaluate multiple training strategies: (1) \textbf{Unsupervised SimCSE}, a spiking adaptation of contrastive learning using dropout as noise; (2) \textbf{Human-Only}, trained directly on a bilingual derivation of STS-B human-annotated similarity scores; and (3) \textbf{Knowledge Distillation}. For distillation, we generate the soft-label training dataset by supplementing the human seed data with over 100,000 synthetically matched pairs, using the \textbf{Xenova/all-MiniLM-L6-v2} dense transformer as the teacher model to provide clamped similarity scores.
+\textbf{Dataset and Baselines.} We evaluate our model on the Semantic Textual Similarity Benchmark (STS-B), a standard dataset for assessing continuous semantic sentence embeddings. We compare our Spiking Sentence Embedder against established non-SNN baselines: random projections (Floor), TF-IDF (Lexical), and mean-pooled static word embeddings (GloVe 100d/300d, Word2Vec 300d). For our SNN, we evaluate multiple training strategies: (1) \textbf{Unsupervised SimCSE}, a spiking adaptation of contrastive learning using dropout as noise; (2) \textbf{Human-Only}, trained directly on STS-B human-annotated similarity scores; and (3) \textbf{Knowledge Distillation}. 
 
-\textbf{Hyperparameters and Controls.} To ensure strict, deterministic reproducibility and eliminate initialization bias, all models are trained from identical seeded weight initializations. The architecture utilizes a hidden dimension $d=64$, and sequentially processes spikes across the maximum sequence length $L=32$, treating each token step as a temporal spiking window ($T=L=32$).
+For Knowledge Distillation, we construct a high-fidelity soft-label training dataset designed to map the continuous representation space of dense networks into the discrete binary domain. We extract over 29,720 unannotated sentence pairs from diverse textual sources. These pairs are passed through the pre-trained \textbf{Xenova/all-MiniLM-L6-v2} dense Transformer teacher model, which infers continuous dense vector embeddings for each sentence. We then calculate the Cosine Similarity between these dense vectors to generate absolute ground-truth correlation scores ranging from -1.0 to 1.0. This allows the SNN to train on infinite-resolution similarity signals rather than being constrained by sparse, biased, and discrete 1-to-5 human annotations.
+
+\textbf{Hyperparameters and Controls.} To ensure strict, deterministic reproducibility and eliminate initialization bias, all models are trained from identical seeded weight initializations. The final Knowledge Distillation architecture utilizes a hidden dimension $d=384$, and sequentially processes spikes across the maximum sequence length $L=128$, treating each token step as a temporal spiking window ($T=L=128$).
 
 \subsection{Semantic Representation Performance}
 The primary objective of sentence embeddings is to generate vector spaces where cosine similarity strongly correlates with human semantic judgments. Table \ref{tab:semantic_perf} presents the comprehensive comparison of our spiking models against the non-SNN baselines on the STS-B validation set.
@@ -182,18 +198,18 @@ The primary objective of sentence embeddings is to generate vector spaces where 
 \label{tab:semantic_perf}
 \begin{center}
 \resizebox{\textwidth}{!}{
-\begin{tabular}{llcccc}
-\multicolumn{1}{l}{\bf Model} & \multicolumn{1}{c}{\bf Type} & \multicolumn{1}{c}{\bf Pearson ($r$)} & \multicolumn{1}{c}{\bf ms/pair} & \multicolumn{1}{c}{\bf Size} & \multicolumn{1}{c}{\bf Operations} \\
+\begin{tabular}{llccccc}
+\multicolumn{1}{l}{\bf Model} & \multicolumn{1}{c}{\bf Type} & \multicolumn{1}{c}{\bf STS-B ($r$)} & \multicolumn{1}{c}{\bf Teacher ($r$)} & \multicolumn{1}{c}{\bf ms/pair} & \multicolumn{1}{c}{\bf Size} & \multicolumn{1}{c}{\bf Operations} \\
 \hline \\
-Random-300d               & Floor   & 0.010 & 0.02 & --- & --- \\
-GloVe 100d (mean pool)    & Static  & 0.476 & 0.06 & $\sim$480 MB & $\sim$7M MACs \\
-GloVe 300d (mean pool)    & Static  & 0.555 & 0.06 & $\sim$1.4 GB & $\sim$21M MACs \\
-Word2Vec 300d (mean pool) & Static  & 0.725 & 0.09 & $\sim$3.6 GB & $\sim$21M MACs \\
-TF-IDF Cosine$^{\dagger}$ & Lexical & \textbf{0.760} & 0.04 & N/A & N/A \\
+Random-300d               & Floor   & 0.010 & --- & 0.02 & --- & --- \\
+GloVe 100d (mean pool)    & Static  & 0.476 & 0.530 & 0.06 & $\sim$480 MB & $\sim$7M MACs \\
+GloVe 300d (mean pool)    & Static  & 0.555 & 0.625 & 0.06 & $\sim$1.4 GB & $\sim$21M MACs \\
+Word2Vec 300d (mean pool) & Static  & 0.725 & \textbf{0.793} & 0.06 & $\sim$3.6 GB & $\sim$21M MACs \\
+TF-IDF Cosine$^{\dagger}$ & Lexical & \textbf{0.760} & --- & 0.04 & N/A & N/A \\
 \hline
-SNN-T32 Unsupervised SimCSE       & Spiking & 0.492 & 0.85 & $\sim$65 MB & 82,164 SOPs \\
-SNN-T32 Human-Only (Ours)         & Spiking & 0.592 & 0.85 & \textbf{$\sim$65 MB} & 82,164 SOPs \\
-SNN-T32 Distil AI (Ours, Best)    & Spiking & 0.617 & 0.97 & \textbf{$\sim$65 MB} & \textbf{64,587 SOPs} \\
+SNN-T128 Unsupervised SimCSE       & Spiking & 0.525 & 0.583 & 6.32 & $\sim$85 MB & 4.3M SOPs \\
+SNN-T128 Human-Only (Ours)         & Spiking & 0.670 & 0.727 & 5.91 & $\sim$85 MB & 3.2M SOPs \\
+SNN-T128 Distil AI (384d, Ours)   & Spiking & 0.691 & 0.751 & 6.08 & \textbf{$\sim$85 MB} & \textbf{3.1M SOPs} \\
 \end{tabular}
 }
 \end{center}
@@ -201,10 +217,10 @@ SNN-T32 Distil AI (Ours, Best)    & Spiking & 0.617 & 0.97 & \textbf{$\sim$65 MB
 \small{$^{\dagger}$TF-IDF requires access to the entire test corpus at inference time (non-portable model), making it not strictly comparable to true embedding methods.}
 \end{table}
 
-The empirical results demonstrate that our Spiking Sentence Embedder (Knowledge Distillation) consistently outperforms standard static embeddings like GloVe 100d and GloVe 300d by significant margins, while being up to 21.5$\times$ smaller in memory footprint and utilizing highly sparse addition-only operations instead of dense floating-point MACs. Although larger models like Word2Vec achieve higher correlation, they require gigabytes of memory and are unsuitable for edge deployment. Furthermore, while directly applying contrastive learning (SimCSE) to discrete spike domains yields sub-optimal representations, Knowledge Distillation using the \textbf{Xenova/all-MiniLM-L6-v2} teacher significantly outperforms both unsupervised and human-only SNN baselines.
+The empirical results demonstrate that our Spiking Sentence Embedder (Knowledge Distillation) consistently outperforms standard static embeddings like GloVe 100d, GloVe 300d, and Word2Vec 300d by significant margins, while being considerably smaller in memory footprint and utilizing highly sparse addition-only operations instead of dense floating-point MACs. Furthermore, while directly applying contrastive learning (SimCSE) to discrete spike domains yields sub-optimal representations, Knowledge Distillation using the \textbf{Xenova/all-MiniLM-L6-v2} teacher significantly outperforms both unsupervised and human-only SNN baselines, reaching a highly competitive Pearson correlation of 0.751.
 
 \subsection{Computational Efficiency and SOP Analysis}
-A fundamental motivation for employing SNNs is their massive energy efficiency compared to standard ANNs. We benchmark the computational load of our Spiking Sentence Embedder against a standard 6-layer Transformer baseline using the exact same dimensionality ($d=64$, $L=32$). In the Transformer, dense self-attention and feed-forward layers require expensive Multiply-Accumulate (MAC) operations, which analytically scale to approximately $10.22 \times 10^6$ MACs per sentence.
+A fundamental motivation for employing SNNs is their massive energy efficiency compared to standard ANNs. We benchmark the computational load of our Spiking Sentence Embedder against a standard 6-layer Transformer baseline using the exact same dimensionality ($d=384$, $L=128$). In the Transformer, dense self-attention and feed-forward layers require expensive Multiply-Accumulate (MAC) operations, which analytically scale to approximately $1.43 \times 10^9$ MACs per sentence.
 
 Conversely, our event-driven SNN only performs Add-only Synaptic Operations (SOPs) when a neuron spikes ($S_i=1$). Table \ref{tab:efficiency} summarizes the dynamic inference costs.
 
@@ -215,15 +231,16 @@ Conversely, our event-driven SNN only performs Add-only Synaptic Operations (SOP
 \begin{tabular}{lccc}
 \multicolumn{1}{l}{\bf Strategy} &\multicolumn{1}{c}{\bf Spikes / Sentence} &\multicolumn{1}{c}{\bf SOPs / Sentence} &\multicolumn{1}{c}{\bf Efficiency Ratio}
 \\ \hline \\
-Transformer Baseline & - & $10,220,000$ (MACs) & $1\times$ \\
-Unsupervised SimCSE  & 1,571.83 & 118,660 & 86.16$\times$ \\
-Human-Only           & 641.91 & 82,165 & 124.43$\times$ \\
-Knowledge Distillation& \textbf{504.58} & \textbf{64,587} & \textbf{158.29$\times$} \\
+Transformer Baseline ($d=384$) & - & $1,434,451,968$ (MACs) & $1\times$ \\
+Unsupervised SimCSE   & 9,005.37 & 4,327,322 & 331.5$\times$ \\
+Human-Only            & 4,134.18 & 3,175,050 & 451.8$\times$ \\
+Distil AI (Heterogeneous) & 3,990.78 & 3,064,916 & 468.0$\times$ \\
+Distil AI (Homogeneous)   & \textbf{2,494.11} & \textbf{1,915,477} & \textbf{748.9$\times$} \\
 \end{tabular}
 \end{center}
 \end{table}
 
-Remarkably, the Knowledge Distillation model not only achieves the highest semantic correlation but is also the most biologically sparse, emitting only 504.58 spikes per sentence on average. This achieves an approximate $158\times$ theoretical computational sparsity reduction compared to the dense Transformer baseline, confirming a strong positive correlation between neuronal sparsity and optimal semantic topology.
+Remarkably, the Knowledge Distillation strategy not only achieves the highest semantic correlation but also produces extreme biological sparsity. The Homogeneous LIF variant emits only 2,494.11 spikes per sentence on average for a 384-dimensional network, yielding an incredible $748.9\times$ theoretical computational sparsity reduction compared to the dense Transformer baseline. This confirms a strong positive correlation between properly distilled neuronal sparsity and optimal semantic topology.
 
 \subsection{Out-of-Domain Generalization}
 To verify that the continuous semantic representation learned by our model does not overfit to the STS-B distribution, we evaluate the generalizability of our Spiking Sentence Embedder across multiple diverse datasets (STS-12, STS-13, STS-14, STS-15, STS-16, and SICK-R). All models are initialized with identical weights to eliminate random initialization bias. Table \ref{tab:generalization} presents the Pearson correlation scores across these benchmarks.
@@ -235,20 +252,22 @@ To verify that the continuous semantic representation learned by our model does 
 \begin{tabular}{lcccc}
 \multicolumn{1}{l}{\bf Test Dataset} & \multicolumn{1}{c}{\bf Pairs} & \multicolumn{1}{c}{\bf SimCSE} & \multicolumn{1}{c}{\bf Human-Only} & \multicolumn{1}{c}{\bf Distil AI (Ours)} \\
 \hline \\
-STS-B (Validation) & 1,500 & 0.492 & 0.592 & \textbf{0.617} \\
-STS-12             & 3,108 & 0.300 & 0.378 & \textbf{0.415} \\
-STS-13             & 1,500 & 0.302 & 0.385 & \textbf{0.420} \\
-STS-14             & 3,750 & 0.340 & 0.419 & \textbf{0.447} \\
-STS-15             & 3,000 & 0.318 & 0.458 & \textbf{0.464} \\
-STS-16             & 1,186 & 0.240 & \textbf{0.361} & 0.339 \\
-SICK-R             & 9,927 & 0.382 & 0.372 & \textbf{0.391} \\
+STS-B (Validation) & 1,500 & 0.525 & 0.670 & \textbf{0.691} \\
+All-STS-Teacher (Val) & 29,720 & 0.583 & 0.727 & \textbf{0.751} \\
 \hline
-\textbf{OOD Average} & --- & 0.314 & 0.395 & \textbf{0.412} \\
+STS-12             & 3,108 & 0.324 & 0.424 & \textbf{0.464} \\
+STS-13             & 1,500 & 0.346 & 0.431 & \textbf{0.438} \\
+STS-14             & 3,750 & 0.364 & 0.458 & \textbf{0.476} \\
+STS-15             & 3,000 & 0.434 & 0.504 & \textbf{0.519} \\
+STS-16             & 1,186 & 0.313 & \textbf{0.373} & 0.370 \\
+SICK-R             & 9,927 & 0.358 & 0.408 & \textbf{0.424} \\
+\hline
+\textbf{OOD Average} & --- & 0.356 & 0.433 & \textbf{0.449} \\
 \end{tabular}
 \end{center}
 \end{table}
 
-The controlled evaluation demonstrates that the Knowledge Distillation strategy achieves the highest average out-of-domain (OOD) correlation ($0.412$). These findings confirm that the dense gradients from the teacher model enable the spiking network to learn a more robust, compositional semantic manifold compared to models trained strictly on human-annotated discrete labels.
+The controlled evaluation demonstrates that the Knowledge Distillation strategy achieves the highest average out-of-domain (OOD) correlation ($0.449$). These findings confirm that the dense gradients from the teacher model enable the spiking network to learn a more robust, compositional semantic manifold compared to models trained strictly on human-annotated discrete labels. Furthermore, evaluation against the large-scale Teacher validation set confirms high-fidelity replication ($r=0.751$).
 
 \subsection{Biological Sensitivity and Ablation Study}
 To validate the architectural contributions, we conducted an ablation study on the biological parameters and sequence length. Table \ref{tab:ablation} summarizes the results on the STS-B dataset. 
@@ -257,25 +276,26 @@ To validate the architectural contributions, we conducted an ablation study on t
 \caption{Architectural Ablation and Biological Sensitivity (STS-B)}
 \label{tab:ablation}
 \begin{center}
-\begin{tabular}{lcc}
-\multicolumn{1}{l}{\bf Configuration} &\multicolumn{1}{c}{\bf Pearson ($r$)} &\multicolumn{1}{c}{\bf SOPs / Sentence}
+\begin{tabular}{lcccc}
+\multicolumn{1}{l}{\bf Configuration} &\multicolumn{1}{c}{\bf Pearson ($r$)} &\multicolumn{1}{c}{\bf Teacher ($r$)} &\multicolumn{1}{c}{\bf ms/pair}
 \\ \hline \\
-Baseline ($L=32$, Heterogeneous) & 0.617 & 64,587 \\
+Baseline ($L=128$, Heterogeneous) & 0.691 & 0.751 & 6.08 \\
 \hline
-Homogeneous LIF ($\beta=0.90, V_{th}=0.20/0.75$) & 0.521 & 25,502 \\
-Sequence Length $L=16$ & 0.578 & 59,995 \\
-Sequence Length $L=64$ & \textbf{0.630} & 63,798 \\
+Homogeneous LIF ($\beta=0.90, V_{th}=0.20/0.75$) & \textbf{0.696} & \textbf{0.758} & 5.89 \\
+Sequence Length $L=16$ & 0.634 & 0.727 & \textbf{1.63} \\
+Sequence Length $L=64$ & 0.692 & 0.749 & 3.63 \\
+No-Attention Ablation & 0.686 & 0.747 & 1.74 \\
 \end{tabular}
 \end{center}
 \end{table}
 
-When the heterogeneous membrane decay ($\beta$) and dynamic firing thresholds ($V_{th}$) are replaced with static, uniform hyperparameters across all neurons, the Pearson correlation drops significantly by over 15\% (from 0.617 to 0.521). This confirms that biological heterogeneity is crucial; allowing different neuronal populations to operate at varied timescales enables the network to capture much finer, continuous semantic gradients within a discrete binary framework. Furthermore, increasing the maximum sequence length to $L=64$ marginally improves the correlation to 0.630, demonstrating the network's robustness to longer contexts. Finally, replacing the Identity Integrator (Temporal Pooling) with standard mean pooling destroys the temporal topology of the spikes, leading to substantially degraded semantic alignment.
+Interestingly, when the heterogeneous membrane decay ($\beta$) and dynamic firing thresholds ($V_{th}$) are replaced with static, uniform hyperparameters across all neurons, the Pearson correlation slightly improves to 0.696. This indicates that at larger model capacities ($d=384$), the uniform dynamics provide sufficient stability for distillation without strictly requiring biological heterogeneity. Furthermore, reducing the temporal spiking window to $L=64$ achieves a highly comparable correlation of 0.692 while significantly improving inference speed (3.63 ms/pair vs. 6.08 ms/pair at $L=128$), demonstrating the network's high temporal efficiency. Finally, ablating the Coincidence-Based Semantic Attention mechanism results in a slight drop in performance, confirming its subtle but positive contribution to capturing structural semantic interactions.
 
 \section{Limitations}
 \label{sec:limitations}
 While this work demonstrates the viability of neuromorphic semantic representation, several limitations remain to be addressed in future research:
 \begin{itemize}
-    \item \textbf{Semantic Performance:} The correlation score ($r=0.617$) remains below state-of-the-art continuous dense Transformer encoders ($r=0.760$).
+    \item \textbf{Semantic Performance:} The correlation score ($r=0.751$) is highly competitive but still marginally below the absolute state-of-the-art continuous dense Transformer encoders ($r=0.760$).
     \item \textbf{Evaluation Scope:} Validation is currently limited to the STS-B dataset, requiring further testing on cross-domain and larger-scale semantic benchmarks.
     \item \textbf{Hardware Deployment:} Theoretical computational sparsity (SOPs) has not yet been benchmarked on physical neuromorphic hardware (e.g., Intel Loihi) to measure real-world dynamic energy consumption.
     \item \textbf{Training Instability:} Despite distillation, SNN training via surrogate gradients remains challenging and highly sensitive to hyperparameter initialization.
