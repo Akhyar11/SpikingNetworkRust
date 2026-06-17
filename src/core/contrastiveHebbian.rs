@@ -44,10 +44,7 @@ pub fn contrastiveHebbian(
                 let n1_s = spikes[idx_n1];
                 let n2_s = if has_hard_negative { spikes[n2_offset + s * d_model + d] } else { 0.0 };
 
-                let mut pull = p_s - q_s;
-                if q_s == 0.0 && p_s == 0.0 && n1_s == 0.0 {
-                    pull = 0.05;
-                }
+                let pull = p_s - q_s;
                 
                 let push1 = q_s * n1_s * margin; 
                 let push2 = if has_hard_negative { q_s * n2_s * margin * 0.2 } else { 0.0 };
@@ -107,9 +104,6 @@ pub fn distillationHebbian(
                 let b_s = spikes[idx_b];
 
                 let mut pull = b_s - a_s;
-                if a_s == 0.0 && b_s == 0.0 {
-                    pull = 0.05;
-                }
                 pull *= pull_weight;
 
                 let push = a_s * b_s * margin * push_weight;

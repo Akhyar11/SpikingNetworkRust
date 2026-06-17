@@ -27,27 +27,28 @@ function standardCosine(vecA, vecB) {
     return dot / (Math.sqrt(normA) * Math.sqrt(normB));
 }
 
-// Fungsi untuk CutMix (menggabungkan dua kalimat)
-function createCutMix(wordsA, wordsB) {
-    if (wordsA.length < 4 || wordsB.length < 4) return wordsA.join(" ");
-    const splitA = Math.floor(wordsA.length / 2);
-    const splitB = Math.floor(wordsB.length / 2);
-    return [...wordsA.slice(0, splitA), ...wordsB.slice(splitB)].join(" ");
+// Fungsi untuk Word Dropout (Menghapus 1-2 kata secara acak agar terkesan seperti typo/hilang konteks)
+function createWordDropout(words) {
+    if (words.length < 4) return words.join(" ");
+    const numDrops = seededRandom() > 0.5 ? 2 : 1;
+    const w = [...words];
+    for (let i = 0; i < numDrops && w.length > 2; i++) {
+        const idx = Math.floor(seededRandom() * w.length);
+        w.splice(idx, 1);
+    }
+    return w.join(" ");
 }
 
-// Fungsi untuk Lexical Swap (menukar posisi kata di satu kalimat)
-function createWordSwap(words) {
+// Fungsi untuk Substring (Mengambil sebagian kalimat, meniru input pengguna yang tidak lengkap)
+function createSubstring(words) {
     if (words.length < 4) return words.join(" ");
-    const w = [...words];
-    const idx1 = Math.floor(seededRandom() * w.length);
-    let idx2 = Math.floor(seededRandom() * w.length);
-    while (idx1 === idx2) {
-        idx2 = Math.floor(seededRandom() * w.length);
+    const keepRatio = 0.6 + (seededRandom() * 0.3); // Ambil 60% - 90% kata
+    const keepCount = Math.floor(words.length * keepRatio);
+    if (seededRandom() > 0.5) {
+        return words.slice(0, keepCount).join(" "); // Potong dari depan
+    } else {
+        return words.slice(words.length - keepCount).join(" "); // Potong dari belakang
     }
-    const temp = w[idx1];
-    w[idx1] = w[idx2];
-    w[idx2] = temp;
-    return w.join(" ");
 }
 
 // Fungsi untuk memuat dataset anotasi manusia (STS-B English & Indonesian)
@@ -182,21 +183,19 @@ async function main() {
         
         let sentenceB = "";
         
-        // Strategi Sampling untuk Variasi Dataset:
+        // Strategi Sampling untuk Variasi Dataset (LEBIH MASUK AKAL):
         const randChoice = seededRandom();
         if (randChoice < 0.20) {
-            // 20%: Identik / Hampir Identik (Positif)
+            // 20%: Identik / Hampir Identik (Positif Kuat)
             sentenceB = sentenceA; 
-        } else if (randChoice < 0.40) {
-            // 20%: Word Swap (Lexical Overlap Negatives)
-            sentenceB = createWordSwap(wordsA);
+        } else if (randChoice < 0.45) {
+            // 25%: Word Dropout (Kalimat dengan kata yang hilang)
+            sentenceB = createWordDropout(wordsA);
         } else if (randChoice < 0.70) {
-            // 30%: CutMix (Gabungan Semantik)
-            const idxB = Math.floor(seededRandom() * allLines.length);
-            const wordsB = allLines[idxB].split(" ");
-            sentenceB = createCutMix(wordsA, wordsB);
+            // 25%: Substring / Truncation (Kalimat yang terpotong)
+            sentenceB = createSubstring(wordsA);
         } else {
-            // 30%: Pure Random (Random Negatives)
+            // 30%: Pure Random (Negatif Murni)
             const idxB = Math.floor(seededRandom() * allLines.length);
             sentenceB = allLines[idxB];
         }

@@ -15,7 +15,7 @@ fn main() {
     // max_seq_length di sini tidak mempengaruhi bentuk bobot,
     // hanya mempengaruhi ukuran buffer temporal (tidak disimpan).
     let d_model = 64;
-    let max_seq_length = 32;
+    let max_seq_length = 64;
 
     println!("Memuat tokenizer...");
     let tokenizer = BPETokenizer::load(vocab_path);
@@ -27,9 +27,9 @@ fn main() {
         learning_rate: 0.01,
         clip_min: -1.0,
         clip_max: 1.0,
-        att_beta_range: (0.8, 0.99),
+        att_beta_range: (0.8, 0.9),
         att_threshold_range: (0.1, 0.3),
-        bptt_beta_range: (0.8, 0.99),
+        bptt_beta_range: (0.8, 0.9),
         bptt_threshold_range: (0.5, 1.0),
     };
 
