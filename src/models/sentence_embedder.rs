@@ -146,8 +146,6 @@ impl SpikingSentenceEmbedder {
         self.cached_actual_lengths = Some(actual_lengths.clone());
         let batch_seq = batch_size * self.max_seq_length;
         let d_model = self.embedding.output_dim;
-
-        let emb_out = self.embedding.forward(&tokenized_batch);
         let mut emb_spikes = 0;
         for &val in &emb_out {
             if val > 0.0 { emb_spikes += 1; }

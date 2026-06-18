@@ -232,4 +232,31 @@ fn main() {
     let mut f = File::create(output_path).unwrap();
     f.write_all(serde_json::to_string_pretty(&output).unwrap().as_bytes()).unwrap();
     println!("\n✓ Hasil evaluasi disimpan ke: {}", output_path);
+    
+    // Simpan bobot hasil training ke file
+    let mut trained_weights = serde_json::Map::new();
+    trained_weights.insert("d_model".to_string(), json!(d_model));
+
+    let mut emb_params = serde_json::Map::new();
+    for (name, data) in embedder.embedding.get_parameters() {
+        emb_params.insert(name.to_string(), json!(data));
+    }
+    trained_weights.insert("embedding".to_string(), json!(emb_params));
+
+    let mut att_params = serde_json::Map::new();
+    for (name, data) in embedder.attention.get_parameters() {
+        att_params.insert(name.to_string(), json!(data));
+    }
+    trained_weights.insert("attention".to_string(), json!(att_params));
+
+    let mut pooler_params = serde_json::Map::new();
+    for (name, data) in embedder.pooler.get_parameters() {
+        pooler_params.insert(name.to_string(), json!(data));
+    }
+    trained_weights.insert("pooler".to_string(), json!(pooler_params));
+
+    let trained_weights_path = "experiment/file_model/trained_weights.json";
+    let mut fw = File::create(trained_weights_path).unwrap();
+    fw.write_all(serde_json::to_string_pretty(&trained_weights).unwrap().as_bytes()).unwrap();
+    println!("✓ Bobot model hasil training disimpan ke: {}", trained_weights_path);
 }
