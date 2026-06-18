@@ -9,6 +9,7 @@ pub struct SNNMetrics {
     pub embedding_spikes: usize,
     pub attention_spikes: usize,
     pub pooler_spikes: usize,
+    pub pooler_active_inputs: usize,
     pub total_sops: usize,
     pub total_sentences: usize,
 }
@@ -96,7 +97,7 @@ impl SpikingSentenceEmbedder {
     pub fn calculate_sops(&mut self) -> usize {
         // SOPs = Σ(S_emb × 3d) + Σ(S_pool × d)
         let embedding_contribution = self.metrics.embedding_spikes * 3 * self.embedding.output_dim;
-        let pooling_contribution = self.metrics.pooler_spikes * self.embedding.output_dim;
+        let pooling_contribution = self.metrics.pooler_active_inputs * self.pooler.units;
         
         let total = embedding_contribution + pooling_contribution;
         self.metrics.total_sops = total;
@@ -105,7 +106,7 @@ impl SpikingSentenceEmbedder {
         println!("  Embedding: {} × 3 × {} = {}", 
             self.metrics.embedding_spikes, self.embedding.output_dim, embedding_contribution);
         println!("  Pooling: {} × {} = {}", 
-            self.metrics.pooler_spikes, self.embedding.output_dim, pooling_contribution);
+            self.metrics.pooler_active_inputs, self.pooler.units, pooling_contribution);
         println!("  Total SOPs: {}", total);
         
         total
@@ -146,8 +147,6 @@ impl SpikingSentenceEmbedder {
         self.cached_actual_lengths = Some(actual_lengths.clone());
         let batch_seq = batch_size * self.max_seq_length;
         let d_model = self.embedding.output_dim;
-
-        let emb_out = self.embedding.forward(&tokenized_batch);
         let mut emb_spikes = 0;
         for &val in &emb_out {
             if val > 0.0 { emb_spikes += 1; }
@@ -188,6 +187,7 @@ impl SpikingSentenceEmbedder {
                     let in_base = b * self.pooler.in_features;
                     for i in 0..self.pooler.in_features {
                         if step_input[in_base + i] > 0.0 {
+                            self.metrics.pooler_active_inputs += 1;
                             self.metrics.total_sops += self.pooler.units;
                         }
                     }

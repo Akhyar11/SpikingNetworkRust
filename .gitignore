@@ -10,3 +10,19 @@ dataset/
 /experiment/file_model/init_weights.json
 
 */**/node_modules
+
+# Hugging Face Exports (Large Files)
+huggingface_export/*.safetensors
+huggingface_export/model_weights.json
+huggingface_export/tokenizer.json
+
+# Trained specific weights
+/experiment/file_model/trained_weights.json
+
+# LaTeX Build Artifacts
+iclr2026/*.aux
+iclr2026/*.log
+iclr2026/*.out
+iclr2026/*.fls
+iclr2026/*.fdb_latexmk
+__pycache__/

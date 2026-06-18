@@ -4,7 +4,7 @@
     "Knowledge Distillation": {
       "results": {
         "All-STS-Teacher": {
-          "ms_per_pair": 6.5753512091184385,
+          "ms_per_pair": 5.868431938223418,
           "n_pairs": 29720,
           "pearson": 0.7514241337776184
         },
@@ -15,7 +15,7 @@
           "transformer_macs_estimated": 10223616.0
         }
       },
-      "train_time_seconds": 2041.645556568
+      "train_time_seconds": 1888.885706817
     }
   },
   "init_weights_file": "experiment/file_model/init_weights.json"
