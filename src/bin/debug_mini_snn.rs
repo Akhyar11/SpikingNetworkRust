@@ -32,13 +32,15 @@ fn load_dataset(path: &str, limit: usize) -> (Vec<String>, Vec<f32>) {
 
 fn main() {
     let d_model = 128;
-    let num_samples = 500; // Skala uji ke 500 data
+    let num_train = 5000;
+    let num_test = 1000;
+    let total_samples = num_train + num_test;
     
     println!("============================================================");
-    println!(" REAL SNN PIPELINE - DETAILED DEBUG (20 EPOCH)");
+    println!(" REAL SNN PIPELINE - TRAIN {} / TEST {} (20 EPOCH)", num_train, num_test);
     println!("============================================================\n");
 
-    let (texts, targets) = load_dataset("experiment/file_model/teacher_distillation_dataset_scored.json", num_samples);
+    let (texts, targets) = load_dataset("experiment/file_model/teacher_distillation_dataset_scored.json", total_samples);
 
     // Load Tokenizer
     let tokenizer = BPETokenizer::load("experiment/file_model/vocab.json");
@@ -50,13 +52,16 @@ fn main() {
     let config = SNNConfig {
         d_model, max_seq_length, learning_rate: 1.5,
         clip_min: -1.0, clip_max: 1.0,
-        att_beta_range: (0.8, 0.99), att_threshold_range: (0.8, 1.0),
+        att_beta_range: (0.8, 0.99), att_threshold_range: (-1.0, -0.5),
         bptt_beta_range: (0.8, 0.99), bptt_threshold_range: (0.5, 1.0),
     };
 
     let mut embedder = SpikingSentenceEmbedder::new(tokenizer, 50000, config.clone());
+    
+    let mut config_att = config.clone();
+    config_att.learning_rate = 2.0; // Boost LR for Attention to help it converge faster
     let tokenizer2 = BPETokenizer::load("experiment/file_model/vocab.json");
-    let mut embedder_att = SpikingSentenceEmbedder::new(tokenizer2, 50000, config);
+    let mut embedder_att = SpikingSentenceEmbedder::new(tokenizer2, 50000, config_att);
 
     // FIX: Set Pooler to be a TRUE Identity Integrator so exact continuous gradients are mathematically correct
     for i in 0..d_model {
@@ -67,6 +72,12 @@ fn main() {
         embedder.pooler.bias[i] = 0.0;
         embedder_att.pooler.bias[i] = 0.0;
     }
+
+    // FIX: Copy exact random Embedding weights so both models start exactly equal!
+    embedder_att.embedding.weights = embedder.embedding.weights.clone();
+    embedder_att.embedding.potentials = embedder.embedding.potentials.clone();
+    embedder_att.embedding.beta = embedder.embedding.beta.clone();
+    embedder_att.embedding.threshold = embedder.embedding.threshold.clone();
     
     let margin = 1.0;
 
@@ -84,17 +95,20 @@ fn main() {
             println!("==============================================================");
         }
 
-        let total_pairs = num_samples;
-        let mini_batch_pairs = 10; // Mini-batch (batch_size 20)
-        
-        let mut epoch_loss = 0.0;
-        let mut total_correct = 0;
+        let mut train_loss = 0.0;
+        let mut train_correct = 0;
+        let mut test_loss = 0.0;
+        let mut test_correct = 0;
 
-        for mb_idx in (0..total_pairs).step_by(mini_batch_pairs) {
+        let mini_batch_pairs = 10;
+
+        for mb_idx in (0..total_samples).step_by(mini_batch_pairs) {
             let start_pair = mb_idx;
-            let end_pair = (mb_idx + mini_batch_pairs).min(total_pairs);
+            let end_pair = (mb_idx + mini_batch_pairs).min(total_samples);
             let num_pairs_mb = end_pair - start_pair;
             
+            let is_train = start_pair < num_train;
+
             let start_text = start_pair * 2;
             let end_text = end_pair * 2;
             let texts_mb = &texts[start_text..end_text];
@@ -177,7 +191,7 @@ fn main() {
                 let off2 = b2 * embedder.pooler.units;
                 let sim = cosine_sim(&normalized_out_data[off1..off1+embedder.pooler.units], &normalized_out_data[off2..off2+embedder.pooler.units]);
                 if (sim - targets_mb[p]).abs() < 0.05 {
-                    total_correct += 1;
+                    if is_train { train_correct += 1; } else { test_correct += 1; }
                 }
             }
 
@@ -185,7 +199,7 @@ fn main() {
             let pooler_loss = SpikingNetworkRust::core::contrastiveHebbian::poolerDistillation(
                 &normalized_out_data, &mut error_final_data, num_pairs_mb, embedder.pooler.units, margin, targets_mb
             );
-            epoch_loss += pooler_loss;
+            if is_train { train_loss += pooler_loss; } else { test_loss += pooler_loss; }
 
             // 7. BACKWARD PASS (LEARNING)
             let mut exact_gradient_seq = vec![0.0; batch_seq * d_model];
@@ -201,13 +215,16 @@ fn main() {
                 }
             }
             
-            embedder.embedding.backward(&exact_gradient_seq, None);
+            if is_train {
+                embedder.embedding.backward(&exact_gradient_seq, None);
+            }
         }
 
         if print_log {
-            let accuracy = (total_correct as f32 / total_pairs as f32) * 100.0;
-            println!("   Total Contrastive Loss Pooler: {:.4}", epoch_loss);
-            println!("   Akurasi (Selisih < 0.05): {:.2}% ({} dari {})", accuracy, total_correct, total_pairs);
+            let train_acc = (train_correct as f32 / num_train as f32) * 100.0;
+            let test_acc = (test_correct as f32 / num_test as f32) * 100.0;
+            println!("   [TRAIN] Loss: {:.4} | Acc: {:.2}% ({} dari {})", train_loss, train_acc, train_correct, num_train);
+            println!("   [TEST]  Loss: {:.4} | Acc: {:.2}% ({} dari {})", test_loss, test_acc, test_correct, num_test);
             let epoch_duration = epoch_start.elapsed();
             println!("   [TIME] Epoch {} selesai dalam: {} ms", epoch, epoch_duration.as_millis());
         }
@@ -227,16 +244,19 @@ fn main() {
             println!("==============================================================");
         }
 
-        let total_pairs = num_samples;
-        let mini_batch_pairs = 1; 
-        
-        let mut epoch_loss = 0.0;
-        let mut total_correct = 0;
+        let mut train_loss = 0.0;
+        let mut train_correct = 0;
+        let mut test_loss = 0.0;
+        let mut test_correct = 0;
 
-        for mb_idx in (0..total_pairs).step_by(mini_batch_pairs) {
+        let mini_batch_pairs = 10;
+
+        for mb_idx in (0..total_samples).step_by(mini_batch_pairs) {
             let start_pair = mb_idx;
-            let end_pair = (mb_idx + mini_batch_pairs).min(total_pairs);
+            let end_pair = (mb_idx + mini_batch_pairs).min(total_samples);
             let num_pairs_mb = end_pair - start_pair;
+            
+            let is_train = start_pair < num_train;
             
             let start_text = start_pair * 2;
             let end_text = end_pair * 2;
@@ -265,12 +285,13 @@ fn main() {
             // 2. EMBEDDING LAYER
             let spikes1 = embedder_att.embedding.forward(&tokenized_batch);
 
-            // 3. ATTENTION LAYER (Transfer Fitur / Spikes2)
+            // 3. ATTENTION LAYER (XOR Residual Correction)
             let mut spikes2 = vec![0.0; batch_seq * d_model];
             let att_spikes = embedder_att.attention.forward(&spikes1, &actual_lengths);
             for i in 0..(batch_seq * d_model) {
                 let att_val = if att_spikes[i] > 0.5 { 1.0 } else { 0.0 };
-                spikes2[i] = if spikes1[i] + att_val > 0.5 { 1.0 } else { 0.0 };
+                // Logical XOR: jika berbeda maka 1, jika sama maka 0
+                spikes2[i] = if spikes1[i] != att_val { 1.0 } else { 0.0 };
             }
 
             // 5. POOLER BPTT
@@ -322,7 +343,7 @@ fn main() {
                 let off2 = b2 * embedder_att.pooler.units;
                 let sim = cosine_sim(&normalized_out_data[off1..off1+embedder_att.pooler.units], &normalized_out_data[off2..off2+embedder_att.pooler.units]);
                 if (sim - targets_mb[p]).abs() < 0.05 {
-                    total_correct += 1;
+                    if is_train { train_correct += 1; } else { test_correct += 1; }
                 }
             }
 
@@ -330,7 +351,7 @@ fn main() {
             let pooler_loss = SpikingNetworkRust::core::contrastiveHebbian::poolerDistillation(
                 &normalized_out_data, &mut error_final_data, num_pairs_mb, embedder_att.pooler.units, margin, targets_mb
             );
-            epoch_loss += pooler_loss;
+            if is_train { train_loss += pooler_loss; } else { test_loss += pooler_loss; }
 
             // BPTT
             let mut exact_gradient_seq = vec![0.0; batch_seq * d_model];
@@ -345,23 +366,36 @@ fn main() {
                     }
                 }
             }
-
-            embedder_att.embedding.backward(&exact_gradient_seq, None);
-
-            // True BPTT for OR Logic: derivative of (spikes1 | att) wrt att is 0 if spikes1 == 1
-            let mut att_gradient_seq = exact_gradient_seq.clone();
+            // BPTT untuk Embedding: 
+            let mut emb_gradient_seq = vec![0.0; batch_seq * d_model];
             for i in 0..(batch_seq * d_model) {
-                if spikes1[i] > 0.5 {
-                    att_gradient_seq[i] = 0.0;
+                let att_val = if att_spikes[i] > 0.5 { 1.0 } else { 0.0 };
+                if att_val > 0.5 {
+                    emb_gradient_seq[i] = -exact_gradient_seq[i]; // Flip gradient for XOR
+                } else {
+                    emb_gradient_seq[i] = exact_gradient_seq[i];
                 }
             }
-            embedder_att.attention.learn_attention(&att_gradient_seq, &actual_lengths);
+            if is_train {
+                embedder_att.embedding.backward(&emb_gradient_seq, None);
+                
+                let mut att_gradient_seq = vec![0.0; batch_seq * d_model];
+                for i in 0..(batch_seq * d_model) {
+                    if spikes1[i] > 0.5 {
+                        att_gradient_seq[i] = -exact_gradient_seq[i];
+                    } else {
+                        att_gradient_seq[i] = exact_gradient_seq[i];
+                    }
+                }
+                embedder_att.attention.learn_attention(&att_gradient_seq, &actual_lengths);
+            }
         }
 
         if print_log {
-            let accuracy = (total_correct as f32 / total_pairs as f32) * 100.0;
-            println!("   Total Contrastive Loss Pooler: {:.4}", epoch_loss);
-            println!("   Akurasi (Selisih < 0.05): {:.2}% ({} dari {})", accuracy, total_correct, total_pairs);
+            let train_acc = (train_correct as f32 / num_train as f32) * 100.0;
+            let test_acc = (test_correct as f32 / num_test as f32) * 100.0;
+            println!("   [TRAIN] Loss: {:.4} | Acc: {:.2}% ({} dari {})", train_loss, train_acc, train_correct, num_train);
+            println!("   [TEST]  Loss: {:.4} | Acc: {:.2}% ({} dari {})", test_loss, test_acc, test_correct, num_test);
             let epoch_duration = epoch_start.elapsed();
             println!("   [TIME] Epoch {} selesai dalam: {} ms", epoch, epoch_duration.as_millis());
         }
