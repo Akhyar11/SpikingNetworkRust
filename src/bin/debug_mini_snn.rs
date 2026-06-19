@@ -2,227 +2,368 @@ use SpikingNetworkRust::core::bpe::BPETokenizer;
 use SpikingNetworkRust::models::sentence_embedder::{SpikingSentenceEmbedder, SNNConfig};
 use std::time::Instant;
 
+use std::fs::File;
+use std::io::BufReader;
+use serde::Deserialize;
+
+#[derive(Deserialize)]
+struct DataPair {
+    s1: String,
+    s2: String,
+    score: f32,
+}
+
+fn load_dataset(path: &str, limit: usize) -> (Vec<String>, Vec<f32>) {
+    let file = File::open(path).expect("Failed to open dataset");
+    let reader = BufReader::new(file);
+    let data: Vec<DataPair> = serde_json::from_reader(reader).expect("Failed to parse JSON");
+    
+    let mut texts = Vec::new();
+    let mut targets = Vec::new();
+    
+    for pair in data.into_iter().take(limit) {
+        texts.push(pair.s1);
+        texts.push(pair.s2);
+        targets.push(pair.score);
+    }
+    
+    (texts, targets)
+}
+
 fn main() {
-    let d_model = 16;
-    let max_seq_length = 6;
+    let d_model = 128;
+    let num_samples = 500; // Skala uji ke 500 data
     
     println!("============================================================");
-    println!(" REAL SNN PIPELINE - DETAILED DEBUG (5 EPOCH)");
-    println!("============================================================");
+    println!(" REAL SNN PIPELINE - DETAILED DEBUG (20 EPOCH)");
+    println!("============================================================\n");
+
+    let (texts, targets) = load_dataset("experiment/file_model/teacher_distillation_dataset_scored.json", num_samples);
 
     // Load Tokenizer
     let tokenizer = BPETokenizer::load("experiment/file_model/vocab.json");
+    
+    // Tentukan max_seq_length dengan mengecek dataset
+    let max_seq_length = texts.iter().map(|text| tokenizer.encode(&text.to_lowercase()).len()).max().unwrap_or(16);
+    println!("Max sequence length detected from dataset: {}", max_seq_length);
+
     let config = SNNConfig {
-        d_model, max_seq_length, learning_rate: 0.05,
+        d_model, max_seq_length, learning_rate: 1.5,
         clip_min: -1.0, clip_max: 1.0,
-        att_beta_range: (0.8, 0.99), att_threshold_range: (0.1, 0.3),
+        att_beta_range: (0.8, 0.99), att_threshold_range: (0.8, 1.0),
         bptt_beta_range: (0.8, 0.99), bptt_threshold_range: (0.5, 1.0),
     };
 
-    let mut embedder = SpikingSentenceEmbedder::new(tokenizer, 50000, config);
-    let use_attention = false; // <-- DISABLE ATTENTION FOR POLYSEMY TEST
+    let mut embedder = SpikingSentenceEmbedder::new(tokenizer, 50000, config.clone());
+    let tokenizer2 = BPETokenizer::load("experiment/file_model/vocab.json");
+    let mut embedder_att = SpikingSentenceEmbedder::new(tokenizer2, 50000, config);
 
+    // FIX: Set Pooler to be a TRUE Identity Integrator so exact continuous gradients are mathematically correct
+    for i in 0..d_model {
+        for j in 0..d_model {
+            embedder.pooler.kernel[i * d_model + j] = if i == j { 1.0 } else { 0.0 };
+            embedder_att.pooler.kernel[i * d_model + j] = if i == j { 1.0 } else { 0.0 };
+        }
+        embedder.pooler.bias[i] = 0.0;
+        embedder_att.pooler.bias[i] = 0.0;
+    }
+    
+    let margin = 1.0;
 
-    // Mini Corpus dengan Kasus Polisemi (Kata sama, makna beda)
-    let texts = [
-        "saya makan nasi putih hangat", 
-        "dia makan nasi putih enak", 
-        "kucing tidur di kasur besar", 
-        "anjing lari di jalan kecil",
-        "bunga di bank sangat tinggi",
-        "bunga di taman sangat cantik",
-        "bunga di bank sangat tinggi",
-        "suku bunga pinjaman sangat naik"
-    ];
-    let targets = [0.9, 0.1, 0.1, 0.9]; 
-    let margin = 0.5;
-
-    for epoch in 1..=500 {
+    println!("\n\n==============================================================");
+    println!(" RUN 1: NO ATTENTION (Word2Vec Style SNN)");
+    println!("==============================================================");
+    for epoch in 1..=20 {
         let epoch_start = Instant::now();
+        let use_attention = false;
         
-        let print_log = epoch % 100 == 0 || epoch == 1 || epoch == 500;
+        let print_log = epoch % 5 == 0 || epoch == 1 || epoch == 20;
         if print_log {
             println!("\n==============================================================");
             println!(" EPOCH {}", epoch);
             println!("==============================================================");
         }
 
-        let batch_size = texts.len();
-        let num_pairs = batch_size / 2;
-        let batch_seq = batch_size * max_seq_length;
+        let total_pairs = num_samples;
+        let mini_batch_pairs = 10; // Mini-batch (batch_size 20)
         
-        embedder.embedding.reset_state();
-        embedder.attention.reset_state(batch_size);
-        embedder.pooler.reset_sequence(batch_size, max_seq_length);
+        let mut epoch_loss = 0.0;
+        let mut total_correct = 0;
 
-        // 1. TOKENIZATION
-        let mut tokenized_batch = Vec::with_capacity(batch_size * max_seq_length);
-        let mut actual_lengths = vec![0; batch_size];
+        for mb_idx in (0..total_pairs).step_by(mini_batch_pairs) {
+            let start_pair = mb_idx;
+            let end_pair = (mb_idx + mini_batch_pairs).min(total_pairs);
+            let num_pairs_mb = end_pair - start_pair;
+            
+            let start_text = start_pair * 2;
+            let end_text = end_pair * 2;
+            let texts_mb = &texts[start_text..end_text];
+            let targets_mb = &targets[start_pair..end_pair];
+
+            let batch_size = texts_mb.len();
+            let batch_seq = batch_size * max_seq_length;
+            
+            embedder.embedding.reset_state();
+            embedder.attention.reset_state(batch_size);
+            embedder.pooler.reset_sequence(batch_size, max_seq_length);
+
+            // 1. TOKENIZATION
+            let mut tokenized_batch = Vec::with_capacity(batch_size * max_seq_length);
+            let mut actual_lengths = vec![0; batch_size];
+            for (b, text) in texts_mb.iter().enumerate() {
+                let mut tokens = embedder.tokenizer.encode(&text.to_lowercase());
+                actual_lengths[b] = tokens.len().min(max_seq_length);
+                if tokens.len() > max_seq_length { tokens.truncate(max_seq_length); }
+                let mut tokens_f32: Vec<f32> = tokens.into_iter().map(|t| t as f32).collect();
+                while tokens_f32.len() < max_seq_length { tokens_f32.push(0.0); } // padding
+                tokenized_batch.extend(&tokens_f32);
+            }
+
+            // 2. EMBEDDING LAYER
+            let spikes1 = embedder.embedding.forward(&tokenized_batch);
+
+            // 3. ATTENTION LAYER (Transfer Fitur / Spikes2)
+            let mut spikes2 = vec![0.0; batch_seq * d_model];
+            spikes2.copy_from_slice(&spikes1);
+
+            // 5. POOLER BPTT
+            let mut final_out_data = vec![0.0; batch_size * embedder.pooler.units];
+            for t in 0..max_seq_length {
+                let mut step_input = vec![0.0; batch_size * embedder.pooler.in_features];
+                for b in 0..batch_size {
+                    if t < actual_lengths[b] {
+                        let base_idx = (b * max_seq_length + t) * embedder.pooler.in_features;
+                        for i in 0..embedder.pooler.in_features {
+                            step_input[b * embedder.pooler.in_features + i] = spikes2[base_idx + i];
+                        }
+                    }
+                }
+                let _out_spikes = embedder.pooler.compute_step(&step_input, t);
+                let pot_at_t = &embedder.pooler.history_potentials[t];
+                for b in 0..batch_size {
+                    if t < actual_lengths[b] {
+                        let offset = b * embedder.pooler.units;
+                        for i in 0..embedder.pooler.units { 
+                            final_out_data[offset + i] += pot_at_t[offset + i]; 
+                        }
+                    }
+                }
+            }
+
+            // 6. MEAN-CENTERING & NORMALISASI & HASIL AKHIR
+            let mut normalized_out_data = vec![0.0; batch_size * embedder.pooler.units];
+            for b in 0..batch_size {
+                let offset = b * embedder.pooler.units;
+                
+                let mut sum = 0.0;
+                for i in 0..embedder.pooler.units { sum += final_out_data[offset + i]; }
+                let mean = sum / (embedder.pooler.units as f32);
+
+                let mut sum_sq = 0.0;
+                for i in 0..embedder.pooler.units { 
+                    let centered = final_out_data[offset + i] - mean;
+                    sum_sq += centered * centered; 
+                }
+                let norm = sum_sq.sqrt().max(1e-8);
+                for i in 0..embedder.pooler.units { 
+                    normalized_out_data[offset + i] = (final_out_data[offset + i] - mean) / norm; 
+                }
+            }
+
+            for p in 0..num_pairs_mb {
+                let b1 = p * 2;
+                let b2 = p * 2 + 1;
+                let off1 = b1 * embedder.pooler.units;
+                let off2 = b2 * embedder.pooler.units;
+                let sim = cosine_sim(&normalized_out_data[off1..off1+embedder.pooler.units], &normalized_out_data[off2..off2+embedder.pooler.units]);
+                if (sim - targets_mb[p]).abs() < 0.05 {
+                    total_correct += 1;
+                }
+            }
+
+            let mut error_final_data = vec![0.0; batch_size * embedder.pooler.units];
+            let pooler_loss = SpikingNetworkRust::core::contrastiveHebbian::poolerDistillation(
+                &normalized_out_data, &mut error_final_data, num_pairs_mb, embedder.pooler.units, margin, targets_mb
+            );
+            epoch_loss += pooler_loss;
+
+            // 7. BACKWARD PASS (LEARNING)
+            let mut exact_gradient_seq = vec![0.0; batch_seq * d_model];
+            for b in 0..batch_size {
+                for s in 0..max_seq_length {
+                    if s < actual_lengths[b] {
+                        let offset_in = (b * max_seq_length + s) * d_model;
+                        let offset_out = b * d_model;
+                        for i in 0..d_model {
+                            exact_gradient_seq[offset_in + i] = error_final_data[offset_out + i];
+                        }
+                    }
+                }
+            }
+            
+            embedder.embedding.backward(&exact_gradient_seq, None);
+        }
+
         if print_log {
-            println!(">> 1. TOKENIZATION & INPUT");
+            let accuracy = (total_correct as f32 / total_pairs as f32) * 100.0;
+            println!("   Total Contrastive Loss Pooler: {:.4}", epoch_loss);
+            println!("   Akurasi (Selisih < 0.05): {:.2}% ({} dari {})", accuracy, total_correct, total_pairs);
+            let epoch_duration = epoch_start.elapsed();
+            println!("   [TIME] Epoch {} selesai dalam: {} ms", epoch, epoch_duration.as_millis());
         }
-        for (b, text) in texts.iter().enumerate() {
-            let mut tokens = embedder.tokenizer.encode(&text.to_lowercase());
-            actual_lengths[b] = tokens.len().min(max_seq_length);
-            if tokens.len() > max_seq_length { tokens.truncate(max_seq_length); }
-            let mut tokens_f32: Vec<f32> = tokens.into_iter().map(|t| t as f32).collect();
-            while tokens_f32.len() < max_seq_length { tokens_f32.push(0.0); } // padding
-            tokenized_batch.extend(&tokens_f32);
-            if print_log {
-                println!("   Batch {}: '{}' -> {:?}", b, text, tokens_f32);
-            }
-        }
+    }
 
-        // 2. EMBEDDING LAYER
-        let spikes1 = embedder.embedding.forward(&tokenized_batch);
+    println!("\n\n==============================================================");
+    println!(" RUN 2: WITH SPARSE COINCIDENCE ATTENTION");
+    println!("==============================================================");
+    for epoch in 1..=20 {
+        let epoch_start = Instant::now();
+        let use_attention = true;
+        
+        let print_log = epoch % 5 == 0 || epoch == 1 || epoch == 20;
         if print_log {
-            println!("\n>> 2. EMBEDDING LAYER (Spikes1 Keluar)");
-        }
-        for b in 0..batch_size {
-            let start = b * max_seq_length * d_model;
-            let end = start + max_seq_length * d_model;
-            let count = spikes1[start..end].iter().filter(|&&x| x > 0.0).count();
-            if print_log {
-                println!("   Batch {} menghasilkan {} letupan spike (Sparsitas: {:.1}%)", b, count, (count as f32 / (max_seq_length * d_model) as f32) * 100.0);
-            }
+            println!("\n==============================================================");
+            println!(" EPOCH {}", epoch);
+            println!("==============================================================");
         }
 
-        // 3. ATTENTION LAYER (Transfer Fitur / Spikes2)
-        let mut spikes2 = vec![0.0; batch_seq * d_model];
-        if use_attention {
-            let att_spikes = embedder.attention.forward(&spikes1, &actual_lengths);
-            if print_log {
-                println!("\n>> 3. ATTENTION LAYER (Transfer Fitur / Spikes2)");
+        let total_pairs = num_samples;
+        let mini_batch_pairs = 1; 
+        
+        let mut epoch_loss = 0.0;
+        let mut total_correct = 0;
+
+        for mb_idx in (0..total_pairs).step_by(mini_batch_pairs) {
+            let start_pair = mb_idx;
+            let end_pair = (mb_idx + mini_batch_pairs).min(total_pairs);
+            let num_pairs_mb = end_pair - start_pair;
+            
+            let start_text = start_pair * 2;
+            let end_text = end_pair * 2;
+            let texts_mb = &texts[start_text..end_text];
+            let targets_mb = &targets[start_pair..end_pair];
+
+            let batch_size = texts_mb.len();
+            let batch_seq = batch_size * max_seq_length;
+            
+            embedder_att.embedding.reset_state();
+            embedder_att.attention.reset_state(batch_size);
+            embedder_att.pooler.reset_sequence(batch_size, max_seq_length);
+
+            // 1. TOKENIZATION
+            let mut tokenized_batch = Vec::with_capacity(batch_size * max_seq_length);
+            let mut actual_lengths = vec![0; batch_size];
+            for (b, text) in texts_mb.iter().enumerate() {
+                let mut tokens = embedder_att.tokenizer.encode(&text.to_lowercase());
+                actual_lengths[b] = tokens.len().min(max_seq_length);
+                if tokens.len() > max_seq_length { tokens.truncate(max_seq_length); }
+                let mut tokens_f32: Vec<f32> = tokens.into_iter().map(|t| t as f32).collect();
+                while tokens_f32.len() < max_seq_length { tokens_f32.push(0.0); } // padding
+                tokenized_batch.extend(&tokens_f32);
             }
+
+            // 2. EMBEDDING LAYER
+            let spikes1 = embedder_att.embedding.forward(&tokenized_batch);
+
+            // 3. ATTENTION LAYER (Transfer Fitur / Spikes2)
+            let mut spikes2 = vec![0.0; batch_seq * d_model];
+            let att_spikes = embedder_att.attention.forward(&spikes1, &actual_lengths);
             for i in 0..(batch_seq * d_model) {
                 let att_val = if att_spikes[i] > 0.5 { 1.0 } else { 0.0 };
                 spikes2[i] = if spikes1[i] + att_val > 0.5 { 1.0 } else { 0.0 };
             }
-            for b in 0..batch_size {
-                let start = b * max_seq_length * d_model;
-                let end = start + max_seq_length * d_model;
-                let count = spikes2[start..end].iter().filter(|&&x| x > 0.0).count();
-                if print_log {
-                    println!("   Batch {} Spikes2 memiliki {} letupan spike setelah ditambah Attention", b, count);
+
+            // 5. POOLER BPTT
+            let mut final_out_data = vec![0.0; batch_size * embedder_att.pooler.units];
+            for t in 0..max_seq_length {
+                let mut step_input = vec![0.0; batch_size * embedder_att.pooler.in_features];
+                for b in 0..batch_size {
+                    if t < actual_lengths[b] {
+                        let base_idx = (b * max_seq_length + t) * embedder_att.pooler.in_features;
+                        for i in 0..embedder_att.pooler.in_features {
+                            step_input[b * embedder_att.pooler.in_features + i] = spikes2[base_idx + i];
+                        }
+                    }
                 }
-            }
-        } else {
-            if print_log {
-                println!("\n>> 3. ATTENTION LAYER (DISABLED - Bypass ke Pooler)");
-            }
-            spikes2.copy_from_slice(&spikes1);
-        }
-
-        // 4. DISTILLATION ERROR DARI ATTENTION
-        let mut err_att_data = vec![0.0; batch_seq * d_model];
-        let loss2 = SpikingNetworkRust::core::contrastiveHebbian::distillationHebbian(
-            &spikes2, &mut err_att_data, num_pairs, max_seq_length, d_model, margin, &actual_lengths, &targets
-        );
-        if print_log {
-            println!("   Loss Distilasi dari Layer Attention: {:.4}", loss2);
-            println!("   Sample Error Signal (Batch 0, T=0): {:?}", &err_att_data[0..d_model]);
-        }
-
-        // 5. POOLER BPTT
-        let mut final_out_data = vec![0.0; batch_size * embedder.pooler.units];
-        for t in 0..max_seq_length {
-            let mut step_input = vec![0.0; batch_size * embedder.pooler.in_features];
-            for b in 0..batch_size {
-                if t < actual_lengths[b] {
-                    let base_idx = (b * max_seq_length + t) * embedder.pooler.in_features;
-                    for i in 0..embedder.pooler.in_features {
-                        step_input[b * embedder.pooler.in_features + i] = spikes2[base_idx + i];
+                let _out_spikes = embedder_att.pooler.compute_step(&step_input, t);
+                let pot_at_t = &embedder_att.pooler.history_potentials[t];
+                for b in 0..batch_size {
+                    if t < actual_lengths[b] {
+                        let offset = b * embedder_att.pooler.units;
+                        for i in 0..embedder_att.pooler.units { 
+                            final_out_data[offset + i] += pot_at_t[offset + i]; 
+                        }
                     }
                 }
             }
-            let out_spikes = embedder.pooler.compute_step(&step_input, t);
+
+            // 6. MEAN-CENTERING & NORMALISASI & HASIL AKHIR
+            let mut normalized_out_data = vec![0.0; batch_size * embedder_att.pooler.units];
             for b in 0..batch_size {
-                if t < actual_lengths[b] {
-                    let offset = b * embedder.pooler.units;
-                    for i in 0..embedder.pooler.units { final_out_data[offset + i] += out_spikes[offset + i]; }
+                let offset = b * embedder_att.pooler.units;
+                let mut sum = 0.0;
+                for i in 0..embedder_att.pooler.units { sum += final_out_data[offset + i]; }
+                let mean = sum / (embedder_att.pooler.units as f32);
+                let mut sum_sq = 0.0;
+                for i in 0..embedder_att.pooler.units { 
+                    let centered = final_out_data[offset + i] - mean;
+                    sum_sq += centered * centered; 
+                }
+                let norm = sum_sq.sqrt().max(1e-8);
+                for i in 0..embedder_att.pooler.units { 
+                    normalized_out_data[offset + i] = (final_out_data[offset + i] - mean) / norm; 
                 }
             }
-        }
 
-        // 6. NORMALISASI & HASIL AKHIR
-        let mut normalized_out_data = vec![0.0; batch_size * embedder.pooler.units];
-        for b in 0..batch_size {
-            let mut sum_sq = 0.0;
-            let offset = b * embedder.pooler.units;
-            for i in 0..embedder.pooler.units { sum_sq += final_out_data[offset + i] * final_out_data[offset + i]; }
-            let norm = sum_sq.sqrt().max(1e-8);
-            for i in 0..embedder.pooler.units { normalized_out_data[offset + i] = final_out_data[offset + i] / norm; }
-        }
-
-        if print_log {
-            println!("\n>> 4. POOLER & COSINE SIMILARITY");
-        }
-        for p in 0..num_pairs {
-            let b1 = p * 2;
-            let b2 = p * 2 + 1;
-            let off1 = b1 * embedder.pooler.units;
-            let off2 = b2 * embedder.pooler.units;
-            let sim = cosine_sim(&normalized_out_data[off1..off1+embedder.pooler.units], &normalized_out_data[off2..off2+embedder.pooler.units]);
-            if print_log {
-                println!("   Pair {} -> Sim: {:.4} (Target: {:.4})", p, sim, targets[p]);
+            for p in 0..num_pairs_mb {
+                let b1 = p * 2;
+                let b2 = p * 2 + 1;
+                let off1 = b1 * embedder_att.pooler.units;
+                let off2 = b2 * embedder_att.pooler.units;
+                let sim = cosine_sim(&normalized_out_data[off1..off1+embedder_att.pooler.units], &normalized_out_data[off2..off2+embedder_att.pooler.units]);
+                if (sim - targets_mb[p]).abs() < 0.05 {
+                    total_correct += 1;
+                }
             }
-        }
 
-        let mut error_final_data = vec![0.0; batch_size * embedder.pooler.units];
-        let dummy_lengths = vec![1; batch_size];
-        let pooler_loss = SpikingNetworkRust::core::contrastiveHebbian::poolerDistillation(
-            &normalized_out_data, &mut error_final_data, num_pairs, embedder.pooler.units, margin, &targets
-        );
-        if print_log {
-            println!("   Contrastive Loss Pooler: {:.4}", pooler_loss);
-        }
+            let mut error_final_data = vec![0.0; batch_size * embedder_att.pooler.units];
+            let pooler_loss = SpikingNetworkRust::core::contrastiveHebbian::poolerDistillation(
+                &normalized_out_data, &mut error_final_data, num_pairs_mb, embedder_att.pooler.units, margin, targets_mb
+            );
+            epoch_loss += pooler_loss;
 
-        // 7. BACKWARD PASS (LEARNING)
-        if print_log {
-            println!("\n>> 5. LEARNING PASS (BACKWARD)");
-        }
-        if use_attention {
-            embedder.attention.learn_attention(&err_att_data, &actual_lengths);
-            if print_log {
-                println!("   ✓ Attention Weights Updated (Hebbian + Oja's Decay)");
-            }
-        }
-        
-        let mut err_emb_data = vec![0.0; batch_seq * d_model];
-        let _loss1 = SpikingNetworkRust::core::contrastiveHebbian::distillationHebbian(
-            &spikes1, &mut err_emb_data, num_pairs, max_seq_length, d_model, margin, &actual_lengths, &targets
-        );
-        embedder.embedding.backward(&err_emb_data, None);
-        if print_log {
-            println!("   ✓ Embedding Weights Updated");
-        }
-        
-        let mut error_seq = vec![vec![0.0; batch_size * embedder.pooler.units]; max_seq_length];
-        for s in 0..max_seq_length {
+            // BPTT
+            let mut exact_gradient_seq = vec![0.0; batch_seq * d_model];
             for b in 0..batch_size {
-                if s < actual_lengths[b] {
-                    let offset = b * embedder.pooler.units;
-                    for i in 0..embedder.pooler.units {
-                        error_seq[s][offset + i] = error_final_data[offset + i];
+                for s in 0..max_seq_length {
+                    if s < actual_lengths[b] {
+                        let offset_in = (b * max_seq_length + s) * d_model;
+                        let offset_out = b * d_model;
+                        for i in 0..d_model {
+                            exact_gradient_seq[offset_in + i] = error_final_data[offset_out + i];
+                        }
                     }
                 }
             }
-        }
-        use SpikingNetworkRust::layers::base::Layer;
-        let lr = embedder.pooler.get_base_config().learning_rate;
-        let _error_wrt_inputs = embedder.pooler.learn_through_time(&error_seq, lr);
-        if print_log {
-            println!("   ✓ Pooler Weights Updated");
 
-            let mut q_sum = 0.0;
-            for i in 0..(d_model * d_model) { q_sum += embedder.attention.kernel_q[i]; }
-            println!("   [DEBUG] Total Sum of Q Kernels: {:.4}", q_sum);
+            embedder_att.embedding.backward(&exact_gradient_seq, None);
+
+            // True BPTT for OR Logic: derivative of (spikes1 | att) wrt att is 0 if spikes1 == 1
+            let mut att_gradient_seq = exact_gradient_seq.clone();
+            for i in 0..(batch_seq * d_model) {
+                if spikes1[i] > 0.5 {
+                    att_gradient_seq[i] = 0.0;
+                }
+            }
+            embedder_att.attention.learn_attention(&att_gradient_seq, &actual_lengths);
         }
 
-        // UKUR WAKTU SATU EPOCH
-        let epoch_duration = epoch_start.elapsed();
         if print_log {
-            println!("\n   [TIME] Epoch {} selesai dalam: {} ms ({} mikrodetik)", epoch, epoch_duration.as_millis(), epoch_duration.as_micros());
+            let accuracy = (total_correct as f32 / total_pairs as f32) * 100.0;
+            println!("   Total Contrastive Loss Pooler: {:.4}", epoch_loss);
+            println!("   Akurasi (Selisih < 0.05): {:.2}% ({} dari {})", accuracy, total_correct, total_pairs);
+            let epoch_duration = epoch_start.elapsed();
+            println!("   [TIME] Epoch {} selesai dalam: {} ms", epoch, epoch_duration.as_millis());
         }
     }
 }
@@ -233,5 +374,5 @@ fn cosine_sim(a: &[f32], b: &[f32]) -> f32 {
         dot += a[i]*b[i]; na += a[i]*a[i]; nb += b[i]*b[i];
     }
     if na == 0.0 || nb == 0.0 { return 0.0; }
-    (dot / (na.sqrt() * nb.sqrt())).max(0.0)
+    dot / (na.sqrt() * nb.sqrt())
 }

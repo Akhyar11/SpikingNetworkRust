@@ -101,7 +101,7 @@ pub fn distillationHebbian(
                 let a_s = spikes[idx_a];
                 let b_s = spikes[idx_b];
 
-                let shared_active = if a_s > 0.0 && b_s > 0.0 { 1.0 } else { 0.0 };
+                let shared_active = if (a_s > 0.0 && b_s > 0.0) || (a_s == 0.0 && b_s == 0.0) { 1.0 } else { 0.0 };
                 let error = target_score - shared_active;
 
                 if error > 0.0 {
