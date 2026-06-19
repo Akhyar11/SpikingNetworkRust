@@ -98,6 +98,27 @@ fn evaluate_stsb(embedder: &mut SpikingSentenceEmbedder, eval_data: &[STSPair]) 
     (pearson(&preds, &targets), ms_per_pair, dur)
 }
 
+fn print_progress_bar(step: usize, total_steps: usize, start_time: Instant) {
+    use std::io::Write;
+    let progress = step as f64 / total_steps as f64;
+    let bar_length = 40;
+    let filled = (progress * bar_length as f64) as usize;
+    let empty = bar_length - filled;
+    
+    let elapsed = start_time.elapsed().as_secs_f64();
+    let mut eta = 0.0;
+    if step > 0 {
+        let time_per_step = elapsed / step as f64;
+        eta = time_per_step * (total_steps - step) as f64;
+    }
+    
+    print!("\r    [");
+    for _ in 0..filled { print!("="); }
+    for _ in 0..empty { print!("-"); }
+    print!("] {:.1}% | Step {}/{} | Elapsed: {:.1}s | ETA: {:.1}s", progress * 100.0, step, total_steps, elapsed, eta);
+    std::io::stdout().flush().unwrap();
+}
+
 fn train_distil(tokenizer: BPETokenizer, vocab_size: usize, init: &serde_json::Value, d_model: usize, use_init: bool, init_d_model: usize, max_seq_length: usize) -> SpikingSentenceEmbedder {
     // BUG FIX: Menggunakan dataset yang sudah di-scoring oleh Model Guru (Soft Labels)
     let dataset_path = "experiment/file_model/teacher_distillation_dataset_scored.json";
@@ -115,9 +136,10 @@ fn train_distil(tokenizer: BPETokenizer, vocab_size: usize, init: &serde_json::V
 
     let num_pairs = 32;
     let steps_per_epoch = dataset.len() / num_pairs;
-    let num_epochs = 2; // Kembalikan ke 2 Epoch. 5 Epoch terlalu lama dan membuat SNN rusak!
+    let num_epochs = 5; // Ditingkatkan ke 5 Epoch karena catastrophic death sudah diperbaiki
     let total_steps = steps_per_epoch * num_epochs;
     let mut step = 0;
+    let t_start = Instant::now();
     
     use rand::seq::SliceRandom;
     use rand::SeedableRng;
@@ -142,17 +164,15 @@ fn train_distil(tokenizer: BPETokenizer, vocab_size: usize, init: &serde_json::V
                 embedder.set_learning_rate(lr);
                 
                 let texts: Vec<&str> = batch_texts.iter().map(|s| s.as_str()).collect();
-                // Menurunkan margin dari 0.2 ke 0.05 agar evaluasi error lebih ketat
-                embedder.train_step_distill(&texts, &batch_targets, 0.05);
+                // Menggunakan margin 0.5 sesuai hasil kalibrasi
+                embedder.train_step_distill(&texts, &batch_targets, 0.5);
                 
                 batch_texts.clear(); batch_targets.clear(); step += 1;
-                
-                if step % 500 == 0 || step == total_steps {
-                    println!("  Epoch {}/{} | Step {}/{} | LR: {:.5}", epoch + 1, num_epochs, step, total_steps, lr);
-                }
+                print_progress_bar(step, total_steps, t_start);
             }
         }
     }
+    println!();
     embedder
 }
 

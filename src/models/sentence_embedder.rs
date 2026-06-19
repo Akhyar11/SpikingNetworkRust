@@ -147,6 +147,9 @@ impl SpikingSentenceEmbedder {
         self.cached_actual_lengths = Some(actual_lengths.clone());
         let batch_seq = batch_size * self.max_seq_length;
         let d_model = self.embedding.output_dim;
+        
+        let emb_out = self.embedding.forward(&tokenized_batch);
+        
         let mut emb_spikes = 0;
         for &val in &emb_out {
             if val > 0.0 { emb_spikes += 1; }
@@ -405,9 +408,20 @@ impl SpikingSentenceEmbedder {
         let mut error_final_data = vec![0.0; batch_size * self.pooler.units];
         let dummy_lengths = vec![1; batch_size];
         
-        let pooler_loss = crate::core::contrastiveHebbian::distillationHebbian(
-            &normalized_out_data, &mut error_final_data, num_pairs, 1, self.pooler.units, margin, &dummy_lengths, targets
+        let pooler_loss = crate::core::contrastiveHebbian::poolerDistillation(
+            &normalized_out_data, &mut error_final_data, num_pairs, self.pooler.units, margin, targets
         );
+
+        let mut error_seq = vec![vec![0.0; batch_size * self.pooler.units]; self.max_seq_length];
+        for s in 0..self.max_seq_length {
+            for b in 0..batch_size {
+                let off = b * self.pooler.units;
+                for i in 0..self.pooler.units { error_seq[s][off + i] = error_final_data[off + i]; }
+            }
+        }
+        use crate::layers::base::Layer;
+        let lr = self.pooler.get_base_config().learning_rate;
+        let _error_wrt_inputs = self.pooler.learn_through_time(&error_seq, lr);
 
         (loss1, loss2, pooler_loss)
     }

@@ -95,6 +95,27 @@ fn evaluate_stsb(embedder: &mut SpikingSentenceEmbedder, eval_data: &[STSPair]) 
     (pearson(&preds, &targets), ms_per_pair, dur)
 }
 
+fn print_progress_bar(step: usize, total_steps: usize, start_time: Instant) {
+    use std::io::Write;
+    let progress = step as f64 / total_steps as f64;
+    let bar_length = 40;
+    let filled = (progress * bar_length as f64) as usize;
+    let empty = bar_length - filled;
+    
+    let elapsed = start_time.elapsed().as_secs_f64();
+    let mut eta = 0.0;
+    if step > 0 {
+        let time_per_step = elapsed / step as f64;
+        eta = time_per_step * (total_steps - step) as f64;
+    }
+    
+    print!("\r    [");
+    for _ in 0..filled { print!("="); }
+    for _ in 0..empty { print!("-"); }
+    print!("] {:.1}% | Step {}/{} | Elapsed: {:.1}s | ETA: {:.1}s", progress * 100.0, step, total_steps, elapsed, eta);
+    std::io::stdout().flush().unwrap();
+}
+
 // ─── Training: Human-Annotated (STS-B) ───────────────────────────────────────
 
 fn train_human(tokenizer: BPETokenizer, vocab_size: usize, init: &serde_json::Value) -> SpikingSentenceEmbedder {
@@ -107,6 +128,7 @@ fn train_human(tokenizer: BPETokenizer, vocab_size: usize, init: &serde_json::Va
     let num_pairs = 32;
     let total_steps = dataset.len() / num_pairs;
     let mut step = 0;
+    let t_start = Instant::now();
     use rand::seq::SliceRandom;
     use rand::SeedableRng;
     let mut rng = rand::rngs::StdRng::seed_from_u64(42);
@@ -121,10 +143,12 @@ fn train_human(tokenizer: BPETokenizer, vocab_size: usize, init: &serde_json::Va
             let lr = 0.01 * f32::max(0.01, 1.0 - (step as f32 / total_steps as f32));
             embedder.set_learning_rate(lr);
             let texts: Vec<&str> = batch_texts.iter().map(|s| s.as_str()).collect();
-            embedder.train_step_distill(&texts, &batch_targets, 0.2);
+            embedder.train_step_distill(&texts, &batch_targets, 0.5);
             batch_texts.clear(); batch_targets.clear(); step += 1;
+            print_progress_bar(step, total_steps, t_start);
         }
     }
+    println!();
     embedder
 }
 
@@ -140,9 +164,10 @@ fn train_distil_base(tokenizer: BPETokenizer, vocab_size: usize, init: &serde_js
 
     let num_pairs = 32;
     let steps_per_epoch = dataset.len() / num_pairs;
-    let num_epochs = 2;
+    let num_epochs = 5;
     let total_steps = steps_per_epoch * num_epochs;
     let mut step = 0;
+    let t_start = Instant::now();
     
     use rand::seq::SliceRandom;
     use rand::SeedableRng;
@@ -164,12 +189,14 @@ fn train_distil_base(tokenizer: BPETokenizer, vocab_size: usize, init: &serde_js
                 embedder.set_learning_rate(lr);
                 
                 let texts: Vec<&str> = batch_texts.iter().map(|s| s.as_str()).collect();
-                embedder.train_step_distill(&texts, &batch_targets, 0.05);
+                embedder.train_step_distill(&texts, &batch_targets, 0.5);
                 
                 batch_texts.clear(); batch_targets.clear(); step += 1;
+                print_progress_bar(step, total_steps, t_start);
             }
         }
     }
+    println!();
     embedder
 }
 
@@ -221,7 +248,7 @@ fn train_distil_homogen(tokenizer: BPETokenizer, vocab_size: usize, init: &serde
 
     let num_pairs = 32;
     let steps_per_epoch = dataset.len() / num_pairs;
-    let num_epochs = 2;
+    let num_epochs = 5;
     let total_steps = steps_per_epoch * num_epochs;
     let mut step = 0;
     
@@ -239,13 +266,13 @@ fn train_distil_homogen(tokenizer: BPETokenizer, vocab_size: usize, init: &serde
             batch_texts.push(pair.s1.clone()); batch_texts.push(pair.s2.clone());
             batch_targets.push(pair.score);
             if batch_targets.len() == num_pairs {
-                let base_lr = 0.0005;
+                let base_lr = 0.005;
                 let progress = step as f32 / total_steps as f32;
                 let lr = base_lr * (0.01 + 0.99 * (0.5 * (1.0 + (progress * std::f32::consts::PI).cos())));
                 embedder.set_learning_rate(lr);
                 
                 let texts: Vec<&str> = batch_texts.iter().map(|s| s.as_str()).collect();
-                embedder.train_step_distill(&texts, &batch_targets, 0.05);
+                embedder.train_step_distill(&texts, &batch_targets, 0.5);
                 
                 batch_texts.clear(); batch_targets.clear(); step += 1;
             }
@@ -289,6 +316,7 @@ fn train_simcse(tokenizer: BPETokenizer, vocab_size: usize, init: &serde_json::V
     let num_pairs = 32;
     let total_steps = all_lines.len() / num_pairs;
     let mut global_step = 0;
+    let t_start = Instant::now();
     use rand::seq::SliceRandom;
     use rand::SeedableRng;
     let mut rng = rand::rngs::StdRng::seed_from_u64(42);
@@ -316,11 +344,13 @@ fn train_simcse(tokenizer: BPETokenizer, vocab_size: usize, init: &serde_json::V
                 pair_texts.push(p_texts[i].as_str());
                 pair_scores.push(1.0_f32);
             }
-            embedder.train_step_distill(&pair_texts, &pair_scores, 0.2);
+            embedder.train_step_distill(&pair_texts, &pair_scores, 0.5);
             q_texts.clear(); p_texts.clear(); h_texts.clear();
             global_step += 1;
+            print_progress_bar(global_step, total_steps, t_start);
         }
     }
+    println!();
     embedder
 }
 

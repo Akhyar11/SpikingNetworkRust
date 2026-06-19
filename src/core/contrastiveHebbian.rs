@@ -101,33 +101,65 @@ pub fn distillationHebbian(
                 let a_s = spikes[idx_a];
                 let b_s = spikes[idx_b];
 
-                // Local SNN prediction: 1.0 if identical, 0.0 if different
-                let local_pred = if a_s == b_s { 1.0 } else { 0.0 };
-                
-                // Pure Formula (Target - Prediction)
-                // If positive -> SNN is less similar than teacher, must be pulled (Pull)
-                // If negative -> SNN is more similar than teacher, must be pushed (Push)
-                let error = target_score - local_pred;
+                let shared_active = if a_s > 0.0 && b_s > 0.0 { 1.0 } else { 0.0 };
+                let error = target_score - shared_active;
 
-                let pull = b_s - a_s;
-                
-                // Pull Update: Occurs when SNN should be more similar (positive error)
-                let pull_update_a = pull * error.max(0.0) * margin;
-                let pull_update_b = -pull * error.max(0.0) * margin;
-
-                // Push Update: Occurs when SNN should be more different (negative error)
-                // Only active if both spike (a_s * b_s = 1.0) to prevent catastrophic death
-                let push_update = (a_s * b_s) * error.min(0.0) * margin;
-                
-                if pull_update_a != 0.0 || pull_update_b != 0.0 || push_update != 0.0 {
-                    err_data[idx_a] += pull_update_a + push_update; 
-                    err_data[idx_b] += pull_update_b + push_update;
-                    
-                    total_loss += error.abs() * margin;
+                if error > 0.0 {
+                    if a_s > 0.0 && b_s == 0.0 {
+                        err_data[idx_b] += error * margin;
+                        total_loss += error * margin;
+                    } else if a_s == 0.0 && b_s > 0.0 {
+                        err_data[idx_a] += error * margin;
+                        total_loss += error * margin;
+                    }
+                } else if error < 0.0 {
+                    if a_s > 0.0 && b_s > 0.0 {
+                        err_data[idx_a] += error * margin; 
+                        err_data[idx_b] += error * margin;
+                        total_loss += (-error) * margin;
+                    }
                 }
             }
         }
     }
 
+    total_loss
+}
+
+#[allow(non_snake_case)]
+pub fn poolerDistillation(
+    normalized_out: &[f32],
+    err_data: &mut [f32],
+    num_pairs: usize,
+    d_model: usize,
+    margin: f32,
+    target_scores: &[f32]
+) -> f32 {
+    let mut total_loss: f32 = 0.0;
+    for i in 0..num_pairs {
+        let a_offset = (2 * i) * d_model;
+        let b_offset = (2 * i + 1) * d_model;
+        let target = target_scores[i];
+
+        // Compute cosine similarity (already normalized, so it's just dot product)
+        let mut sim = 0.0;
+        for d in 0..d_model {
+            sim += normalized_out[a_offset + d] * normalized_out[b_offset + d];
+        }
+
+        let error = target - sim; // positive if sim is too low
+        total_loss += error.abs() * margin;
+
+        for d in 0..d_model {
+            let a_val = normalized_out[a_offset + d];
+            let b_val = normalized_out[b_offset + d];
+            
+            // Gradient of sim w.r.t a_val is b_val
+            // Gradient of sim w.r.t b_val is a_val
+            // We want to maximize sim if error > 0, minimize if error < 0
+            err_data[a_offset + d] += error * b_val * margin;
+            err_data[b_offset + d] += error * a_val * margin;
+        }
+    }
     total_loss
 }
