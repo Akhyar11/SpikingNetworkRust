@@ -11,10 +11,10 @@ fn main() {
     let vocab_path = "experiment/file_model/vocab.json";
     let output_path = "experiment/file_model/init_weights.json";
 
-    // Gunakan d_model=64 yang dipakai di semua eksperimen.
+    // Gunakan d_model=256 yang dipakai di semua eksperimen.
     // max_seq_length di sini tidak mempengaruhi bentuk bobot,
     // hanya mempengaruhi ukuran buffer temporal (tidak disimpan).
-    let d_model = 384;
+    let d_model = 256;
     let max_seq_length = 128;
 
     println!("Memuat tokenizer...");
@@ -27,14 +27,22 @@ fn main() {
         learning_rate: 0.01,
         clip_min: -1.0,
         clip_max: 1.0,
-        att_beta_range: (0.8, 0.9),
-        att_threshold_range: (0.1, 0.3),
-        bptt_beta_range: (0.8, 0.9),
+        att_beta_range: (0.8, 0.99),
+        att_threshold_range: (-1.0, -0.5),
+        bptt_beta_range: (0.8, 0.99),
         bptt_threshold_range: (0.5, 1.0),
     };
 
     println!("Inisialisasi model acak (sekali)...");
-    let embedder = SpikingSentenceEmbedder::new(tokenizer, vocab_size, snn_config);
+    let mut embedder = SpikingSentenceEmbedder::new(tokenizer, vocab_size, snn_config);
+
+    // Paksa Pooler menjadi Matriks Identitas seperti di full_eval_controlled.rs
+    for i in 0..d_model {
+        for j in 0..d_model {
+            embedder.pooler.kernel[i * d_model + j] = if i == j { 1.0 } else { 0.0 };
+        }
+        embedder.pooler.bias[i] = 0.0;
+    }
 
     // Kumpulkan semua parameter dari ketiga layer
     let mut init_data = serde_json::Map::new();

@@ -1,0 +1,8 @@
+{
+  "tokenizer_class": "PreTrainedTokenizerFast",
+  "unk_token": "<UNK>",
+  "pad_token": "<PAD>",
+  "bos_token": "<BOS>",
+  "eos_token": "<EOS>",
+  "clean_up_tokenization_spaces": true
+}

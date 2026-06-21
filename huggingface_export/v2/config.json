@@ -1,0 +1,14 @@
+{
+  "architectures": [
+    "SpikingSentenceEmbedder"
+  ],
+  "beta": 0.9,
+  "d_model": 256,
+  "dtype": "float32",
+  "margin": 0.05,
+  "max_position_embeddings": 128,
+  "model_type": "spiking_snn",
+  "neuron_type": "homogeneous_lif",
+  "transformers_version": "5.12.1",
+  "vocab_size": 32000
+}

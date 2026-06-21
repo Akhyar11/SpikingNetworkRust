@@ -38,12 +38,21 @@ fn apply_init(embedder: &mut SpikingSentenceEmbedder, init: &serde_json::Value) 
 }
 
 fn new_embedder(tokenizer: BPETokenizer, vocab_size: usize, d_model: usize, max_seq_length: usize) -> SpikingSentenceEmbedder {
-    SpikingSentenceEmbedder::new(tokenizer, vocab_size, sentence_embedder::SNNConfig {
+    let mut embedder = SpikingSentenceEmbedder::new(tokenizer, vocab_size, sentence_embedder::SNNConfig {
         d_model, max_seq_length, learning_rate: 0.01,
         clip_min: -1.0, clip_max: 1.0,
-        att_beta_range: (0.8, 0.9), att_threshold_range: (0.1, 0.3),
-        bptt_beta_range: (0.8, 0.9), bptt_threshold_range: (0.5, 1.0),
-    })
+        att_beta_range: (0.8, 0.99), att_threshold_range: (-1.0, -0.5),
+        bptt_beta_range: (0.8, 0.99), bptt_threshold_range: (0.5, 1.0),
+    });
+
+    for i in 0..d_model {
+        for j in 0..d_model {
+            embedder.pooler.kernel[i * d_model + j] = if i == j { 1.0 } else { 0.0 };
+        }
+        embedder.pooler.bias[i] = 0.0;
+    }
+
+    embedder
 }
 
 fn cosine_sim(a: &[f32], b: &[f32]) -> f32 {
@@ -132,11 +141,11 @@ fn train_distil(tokenizer: BPETokenizer, vocab_size: usize, init: &serde_json::V
     } else {
         println!("  -> Melewati inisialisasi terkontrol karena d_model script ({}) berbeda dengan init_weights ({}).", d_model, init_d_model);
     }
-    embedder.set_use_attention(true);
+    embedder.set_use_attention(false);
 
     let num_pairs = 32;
     let steps_per_epoch = dataset.len() / num_pairs;
-    let num_epochs = 5; // Ditingkatkan ke 5 Epoch karena catastrophic death sudah diperbaiki
+    let num_epochs = 10;
     let total_steps = steps_per_epoch * num_epochs;
     let mut step = 0;
     let t_start = Instant::now();
@@ -157,7 +166,7 @@ fn train_distil(tokenizer: BPETokenizer, vocab_size: usize, init: &serde_json::V
             batch_texts.push(pair.s1.clone()); batch_texts.push(pair.s2.clone());
             batch_targets.push(pair.score);
             if batch_targets.len() == num_pairs {
-                let base_lr = if use_init { 0.0005 } else { 0.01 };
+                let base_lr = 2.0;
                 let progress = step as f32 / total_steps as f32;
                 // LR Scheduler: Cosine Annealing (bertahan tinggi di awal, melambat drastis di akhir)
                 let lr = base_lr * (0.01 + 0.99 * (0.5 * (1.0 + (progress * std::f32::consts::PI).cos())));
@@ -221,7 +230,7 @@ fn main() {
     let vocab_size = tokenizer.vocab_size();
 
     // Ubah nilai d_model dan max_seq_length di sini
-    let d_model = 384; 
+    let d_model = 256; 
     let max_seq_length = 128;
 
     println!("Memuat bobot inisialisasi terkontrol dari {}...", init_path);
