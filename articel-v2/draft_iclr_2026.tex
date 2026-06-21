@@ -84,7 +84,7 @@ Our proposed Spiking Sentence Embedder aims to construct continuous semantic rep
 \subsection{Spike Encoding and Heterogeneous Dynamics}
 Raw text is tokenized into vocabulary indices. The Spiking Embedding Layer translates these tokens into temporal spike trains $S_{emb}^{(t)}$ over discrete sequence steps $t \in [1, L]$, where the temporal dimension maps perfectly to sequence length. The membrane potential $V_{emb}^{(t)}$ is modeled via Leaky Integrate-and-Fire (LIF) dynamics:
 \begin{equation}
-V_{emb}^{(t)} = \min\left(1.0, \beta_{emb} V_{emb}^{(t-1)} + X W_{emb}\right) - S_{emb}^{(t)} \theta_{emb}
+V_{emb}^{(t)} = \min\left(1.0, \beta_{emb} \odot V_{emb}^{(t-1)} + X^{(t)} W_{emb}\right) - S_{emb}^{(t)} \odot \theta_{emb}
 \end{equation}
 When the pre-reset potential exceeds the threshold $\theta_{emb}$, a spike $S_{emb}^{(t)} = 1$ is fired. We utilize a \textit{Soft-Reset} strategy (subtracting the threshold) rather than a hard reset to absolute zero. Preserving these fractional sub-threshold residual potentials prevents catastrophic semantic information loss across time. Furthermore, we introduce biological heterogeneity: the leak decay $\beta_{emb}$ and thresholds $\theta_{emb}$ are initialized with unique, uniformly distributed values across dimensions (e.g., $\beta \in [1 - 2^{-2}, 1 - 2^{-7}]$). This forces multi-timescale temporal processing immediately upon sequence ingestion. 
 
@@ -102,7 +102,7 @@ While this avoids continuous floating-point multiplications, calculating $\mathc
 \subsection{The Superior Recurrent Pooler (Proposed Architecture)}
 We propose that spatial attention is functionally redundant. In our purely recurrent architecture, $S_{emb}^{(t)}$ bypasses attention and directly feeds into a Spiking Dense BPTT Pooler layer. Because the input spike $S_{emb}$ strictly guarantees binary values $\{0, 1\}$, the dense matrix projection is simplified to conditional accumulations:
 \begin{equation}
-X_{pool}^{(t)} = \sum_{d=1}^{D_{in}} \begin{cases} W_{d} & \text{if } S_{emb, d}^{(t)} = 1 \\ 0 & \text{otherwise} \end{cases}
+X_{pool}^{(t)} = \sum_{d=1}^{D_{in}} W_{d} \cdot \mathbb{I}\left[ S_{emb, d}^{(t)} = 1 \right]
 \end{equation}
 By bypassing floating-point multiplications entirely, this step offers massive computational sparsity. The final continuous sentence embedding $E$ is extracted by accumulating the fractional membrane potentials across the entire temporal sequence $T$:
 \begin{equation}
@@ -111,27 +111,27 @@ E = \sum_{t=1}^T V_{pool}^{(t)}
 
 \textbf{Learning via BPTT and Add-Only Deltas:} The true power of this architecture stems from its backpropagation mechanics. Because the Heaviside step function lacks a valid derivative, we employ a Rectangular Surrogate Mask to propagate errors, building upon the foundations of spatio-temporal backpropagation in SNNs \citep{lee2016training, wu2018spatio, neftci2019surrogate}:
 \begin{equation}
-\sigma'(V) = \begin{cases} 1 & \text{if } |V - \theta| < \text{window\_size} \\ 0 & \text{otherwise} \end{cases}
+\sigma'\big(V^{(t)}\big) = \begin{cases} 1 & \text{if } \big|V^{(t)} - \theta\big| < w \\ 0 & \text{otherwise} \end{cases}
 \end{equation}
 During Backpropagation Through Time, the error $\delta^{(t)}$ at sequence step $t$ is explicitly linked to future time steps via the heterogeneous decay $\beta_{pool}$:
 \begin{equation}
-\tilde{\delta}^{(t)} = \left( \delta_{out}^{(t)} + \delta^{(t+1)} \cdot \beta_{pool} \right) \cdot \sigma'(V_{pool}^{(t)})
+\tilde{\delta}^{(t)} = \left( \delta_{out}^{(t)} + \tilde{\delta}^{(t+1)} \odot \beta_{pool} \right) \odot \sigma'\big(V_{pool}^{(t)}\big)
 \end{equation}
 This explicit temporal unrolling allows the $\beta$ parameter to act as a natural contextual router. The pooler inherently learns long-term syntactic dependencies simply by preserving or decaying gradients. Furthermore, during weight updating, the gradient accumulation $\Delta W$ also utilizes an Add-Only Delta rule:
 \begin{equation}
-\Delta W_{in, out} = \sum_{t} \begin{cases} \tilde{\delta}^{(t)}_{out} & \text{if } S_{emb, in}^{(t)} = 1 \\ 0 & \text{otherwise} \end{cases}
+\Delta W_{in, out} = \sum_{t=1}^{T} \tilde{\delta}^{(t)}_{out} \cdot \mathbb{I}\left[ S_{emb, in}^{(t)} = 1 \right]
 \end{equation}
 This greatly reduces dense matrix multiplications in the forward and BPTT routing phases, rendering the spatial $\mathcal{O}(L^2)$ matrix completely unnecessary.
 
 \subsection{Knowledge Distillation and Error Routing}
-To optimize these dynamics, we distill "dark knowledge" from a pre-trained dense Teacher, adapting established knowledge distillation techniques \citep{Hinton06, hinton2015distilling, goodfellow2016deep, Bengio+chapter2007} to the discrete spiking domain. We utilize a Mean Squared Error (MSE) objective over the Cosine Similarity scores. The exact error $E$ is given by:
+To optimize these dynamics, we distill "dark knowledge" from a pre-trained dense Teacher, adapting established knowledge distillation techniques \citep{Hinton06, hinton2015distilling, goodfellow2016deep, Bengio+chapter2007} to the discrete spiking domain. We utilize a Mean Squared Error (MSE) objective over the Cosine Similarity scores. The exact error $\mathcal{E}$ is given by:
 \begin{equation}
-E = \text{Score}_{Teacher} - \sum_{d=1}^{D_{model}} (\tilde{E}_{1,d} \cdot \tilde{E}_{2,d})
+\mathcal{E} = \text{Sim}_{Teacher} - \sum_{d=1}^{D_{model}} \left(\tilde{E}_{1,d} \cdot \tilde{E}_{2,d}\right)
 \end{equation}
 where $\tilde{E}$ denotes the z-score normalized pooled embeddings. The error gradient is derived symmetrically across the representation space:
 \begin{align}
-\frac{\partial \mathcal{L}}{\partial \tilde{E}_{1,d}} &= E \cdot \tilde{E}_{2,d} \cdot m \\
-\frac{\partial \mathcal{L}}{\partial \tilde{E}_{2,d}} &= E \cdot \tilde{E}_{1,d} \cdot m
+\frac{\partial \mathcal{L}}{\partial \tilde{E}_{1,d}} &= -\mathcal{E} \cdot \tilde{E}_{2,d} \cdot m \\
+\frac{\partial \mathcal{L}}{\partial \tilde{E}_{2,d}} &= -\mathcal{E} \cdot \tilde{E}_{1,d} \cdot m
 \end{align}
 This gradient is then injected directly into the temporal unrolling sequence via BPTT. The contrastive margin $m=0.05$ acts as a dampening factor that restricts explosive updates from sparse binary state flips. This end-to-end framework allows the discrete, event-driven parameter space to safely converge toward the continuous dense Teacher topology.
 
