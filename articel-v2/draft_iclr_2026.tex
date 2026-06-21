@@ -121,7 +121,7 @@ This explicit temporal unrolling allows the $\beta$ parameter to act as a natura
 \begin{equation}
 \Delta W_{in, out} = \sum_{t} \begin{cases} \tilde{\delta}^{(t)}_{out} & \text{if } S_{emb, in}^{(t)} = 1 \\ 0 & \text{otherwise} \end{cases}
 \end{equation}
-This establishes a fully multiplication-free learning dynamic in the forward and BPTT routing phases, rendering the spatial $\mathcal{O}(L^2)$ matrix completely unnecessary.
+This greatly reduces dense matrix multiplications in the forward and BPTT routing phases, rendering the spatial $\mathcal{O}(L^2)$ matrix completely unnecessary.
 
 \subsection{Knowledge Distillation and Error Routing}
 To optimize these dynamics, we distill dark knowledge from a pre-trained dense Teacher. We utilize a Mean Squared Error (MSE) objective over the Cosine Similarity scores. The exact error $E$ is given by:
@@ -137,7 +137,7 @@ This gradient is then injected directly into the temporal unrolling sequence via
 
 \section{Experimental Evaluation}
 
-The models are implemented in native Rust to guarantee deterministic execution, avoiding PyTorch simulation artifacts. We trained over 20 epochs across 29,720 validation pairs from ALL-STS.
+The models are implemented in native Rust to guarantee deterministic execution, avoiding PyTorch simulation artifacts. We trained over 20 epochs across 29,720 validation pairs from ALL-STS. The aggregate ALL-STS score is calculated as a weighted average of Pearson correlations across its constituent benchmarks (STS-12 through STS-16, STS-B, and SICK-R) based on their respective sample sizes.
 
 \subsection{Phase 1: Dimensionality Scaling}
 Using the Distillation strategy with the Recurrent Pooler, we scaled the embedding dimension $D_{model}$ to analyze representation capacity. 
@@ -205,13 +205,13 @@ SICK-R & 0.4745 & 0.4819 \\
 \end{tabular}
 \end{table}
 
-The Recurrent Pooler achieves highly competitive performance across all subsets, occasionally surpassing the Jaccard Attention (e.g., STS-12, STS-13, STS-14), confirming that explicit spike-driven self-attention is largely unnecessary for general semantic embedding tasks.
+The Recurrent Pooler achieves highly competitive performance across all subsets, occasionally surpassing the Jaccard Attention (e.g., STS-12, STS-13, STS-14). While attention occasionally improves performance on specific benchmarks (such as STS-16), its overall gains remain modest relative to the computational overhead incurred.
 
 \section{Limitations}
 While our attention-free recurrent SNN achieves remarkable sparsity, the peak correlation ($0.8031$) remains marginally below the theoretical limit of the full-precision Teacher model ($>0.85$), indicating an inherent compression bottleneck in discrete binary signaling. Furthermore, our empirical sequence length is capped at $L=128$; verifying temporal decay limits over much longer contexts (e.g., document-level embeddings) requires future investigation.
 
 \section{Conclusion}
-Through detailed mathematical formulation and rigorous low-level structural ablation, we demonstrate that forcing Spatial Attention onto Spiking Neural Networks produces an unjustifiable computational bottleneck. The biological temporal decay properties inherent to LIF neurons, when trained via Surrogate Gradients and BPTT, naturally encapsulate complex sentence semantics without requiring quadratic sequence routing. We conclude that Spike-Driven Self-Attention is redundant for dense semantic representations, paving the way for ultra-efficient, purely recurrent SNN embedders.
+Through detailed mathematical formulation and rigorous low-level structural ablation, we demonstrate that forcing Spatial Attention onto Spiking Neural Networks produces an unjustifiable computational bottleneck. The biological temporal decay properties inherent to LIF neurons, when trained via Surrogate Gradients and BPTT, naturally encapsulate complex sentence semantics without requiring quadratic sequence routing. Our findings suggest that the benefits of spike-driven self-attention may not justify its computational cost in sentence embedding scenarios, paving the way for ultra-efficient, purely recurrent SNN embedders.
 
 
 \bibliography{iclr2026_conference}
