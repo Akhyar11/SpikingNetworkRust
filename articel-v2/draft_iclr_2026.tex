@@ -137,7 +137,7 @@ This gradient is then injected directly into the temporal unrolling sequence via
 
 \section{Experimental Evaluation}
 
-The models are implemented in native Rust to guarantee deterministic execution, avoiding PyTorch simulation artifacts. We trained over 20 epochs across 29,720 validation pairs from ALL-STS. The aggregate ALL-STS score is calculated as a weighted average of Pearson correlations across its constituent benchmarks (STS-12 through STS-16, STS-B, and SICK-R) based on their respective sample sizes.
+The models are implemented in native Rust to guarantee deterministic execution, avoiding PyTorch simulation artifacts. We trained over 10 epochs across 250,000 knowledge distillation pairs scored by a Dense Teacher model. The aggregate ALL-STS score is calculated as a weighted average of Pearson correlations across its constituent zero-shot evaluation benchmarks (STS-12 through STS-16, STS-B, and SICK-R) based on their respective sample sizes.
 
 \subsection{Phase 1: Dimensionality Scaling}
 Using the Distillation strategy with the Recurrent Pooler, we scaled the embedding dimension $D_{model}$ to analyze representation capacity. 
