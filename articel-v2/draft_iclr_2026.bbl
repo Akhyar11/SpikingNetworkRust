@@ -1,4 +1,4 @@
-\begin{thebibliography}{4}
+\begin{thebibliography}{5}
 \providecommand{\natexlab}[1]{#1}
 \providecommand{\url}[1]{\texttt{#1}}
 \expandafter\ifx\csname urlstyle\endcsname\relax
@@ -16,6 +16,12 @@ Yudong Li, Yunlin Lei, and Xu~Yang.
 \newblock Spikeformer: A novel architecture for training high-performance
   low-latency spiking neural network.
 \newblock \emph{arXiv preprint arXiv:2211.10686}, 2022.
+
+\bibitem[Muhammad(2026)]{coincidence2026}
+Akhyar Muhammad.
+\newblock Sparse coincidence-based semantic attention for spiking neural
+  sentence embedding, 2026.
+\newblock URL \url{https://doi.org/10.5281/zenodo.20743764}.
 
 \bibitem[Reimers \& Gurevych(2019)Reimers and Gurevych]{reimers2019sentence}
 Nils Reimers and Iryna Gurevych.

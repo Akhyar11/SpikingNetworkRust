@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026/Arch Linux) (preloaded format=pdflatex 2026.6.13)  21 JUN 2026 17:19
+This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026/Arch Linux) (preloaded format=pdflatex 2026.6.13)  21 JUN 2026 17:32
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -667,38 +667,31 @@ LaTeX Font Info:    Trying to load font information for OT1+pcr on input line 3
 (/usr/share/texmf-dist/tex/latex/psnfss/ot1pcr.fd
 File: ot1pcr.fd 2001/06/04 font definitions for OT1/pcr.
 )
+Underfull \vbox (badness 10000) has occurred while \output is active []
 
-Package natbib Warning: Citation `coincidence2026' on page 1 undefined on input
- line 37.
-
-[1
+ [1
 
 {/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map}{/usr/share/texmf-dist/fonts
 /enc/dvips/base/8r.enc}] [2]
 
-Package natbib Warning: Citation `coincidence2026' on page 3 undefined on input
- line 108.
+LaTeX Warning: `h' float specifier changed to `ht'.
 
-[3] (./draft_iclr_2026.bbl)
-
-Package natbib Warning: There were undefined citations.
-
-[4] (./draft_iclr_2026.aux)
+[3] (./draft_iclr_2026.bbl [4]) [5] (./draft_iclr_2026.aux)
  ***********
 LaTeX2e <2025-11-01>
 L3 programming layer <2026-01-19>
  ***********
 Package rerunfilecheck Info: File `draft_iclr_2026.out' has not changed.
-(rerunfilecheck)             Checksum: 0711B009A26AF71DE1BF8F4857E5B710;2524.
+(rerunfilecheck)             Checksum: D90F65ECC519CCE8F03CB57C6B96A9F5;2440.
  ) 
 Here is how much of TeX's memory you used:
- 21463 strings out of 469515
- 382692 string characters out of 5470807
- 778750 words of memory out of 5000000
- 49723 multiletter control sequences out of 15000+600000
+ 21472 strings out of 469515
+ 382862 string characters out of 5470807
+ 778777 words of memory out of 5000000
+ 49727 multiletter control sequences out of 15000+600000
  647251 words of font info for 78 fonts, out of 8000000 for 9000
  14 hyphenation exceptions out of 8191
- 84i,12n,94p,1383b,467s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 84i,12n,94p,1605b,467s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </usr/share/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb></usr/share/
 texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb></usr/share/texmf-dist/fon
 ts/type1/public/amsfonts/cm/cmmi5.pfb></usr/share/texmf-dist/fonts/type1/public
@@ -709,10 +702,10 @@ are/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/share/texmf-dist
 w/courier/ucrr8a.pfb></usr/share/texmf-dist/fonts/type1/urw/times/utmb8a.pfb></
 usr/share/texmf-dist/fonts/type1/urw/times/utmr8a.pfb></usr/share/texmf-dist/fo
 nts/type1/urw/times/utmri8a.pfb>
-Output written on draft_iclr_2026.pdf (4 pages, 160003 bytes).
+Output written on draft_iclr_2026.pdf (5 pages, 167311 bytes).
 PDF statistics:
- 165 PDF objects out of 1000 (max. 8388607)
- 133 compressed objects within 2 object streams
- 30 named destinations out of 1000 (max. 500000)
- 109 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 177 PDF objects out of 1000 (max. 8388607)
+ 144 compressed objects within 2 object streams
+ 35 named destinations out of 1000 (max. 500000)
+ 101 words of extra memory for PDF output out of 10000 (max. 10000000)
 
