@@ -1,0 +1,35 @@
+\begin{thebibliography}{4}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Gao et~al.(2021)Gao, Yao, and Chen]{gao2021simcse}
+Tianyu Gao, Xingcheng Yao, and Danqi Chen.
+\newblock Simcse: Simple contrastive learning of sentence embeddings.
+\newblock In \emph{Proceedings of the 2021 Conference on Empirical Methods in
+  Natural Language Processing}, pp.\  6894--6910, 2021.
+
+\bibitem[Li et~al.(2022)Li, Lei, and Yang]{li2022spikeformer}
+Yudong Li, Yunlin Lei, and Xu~Yang.
+\newblock Spikeformer: A novel architecture for training high-performance
+  low-latency spiking neural network.
+\newblock \emph{arXiv preprint arXiv:2211.10686}, 2022.
+
+\bibitem[Reimers \& Gurevych(2019)Reimers and Gurevych]{reimers2019sentence}
+Nils Reimers and Iryna Gurevych.
+\newblock Sentence-bert: Sentence embeddings using siamese bert-networks.
+\newblock In \emph{Proceedings of the 2019 Conference on Empirical Methods in
+  Natural Language Processing and the 9th International Joint Conference on
+  Natural Language Processing (EMNLP-IJCNLP)}, pp.\  3982--3992, 2019.
+
+\bibitem[Zhu et~al.(2023)Zhu, Zhao, Zhang, Deng, Li, Duan, Cheng,
+  et~al.]{zhu2023spikegpt}
+Rui-Jie Zhu, Qiao Zhao, Guobin Zhang, Pengjie Deng, Hai Li, Yikang Duan, Xiang
+  Cheng, et~al.
+\newblock Spikegpt: Generative pre-trained language model with spiking neural
+  networks.
+\newblock \emph{arXiv preprint arXiv:2302.13939}, 2023.
+
+\end{thebibliography}
