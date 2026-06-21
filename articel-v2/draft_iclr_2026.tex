@@ -12,6 +12,7 @@
 \usepackage{hyperref}
 \usepackage{url}
 \usepackage{tikz}
+\usetikzlibrary{arrows}
 
 \title{Is Spike-Driven Self-Attention Necessary?\\ The Inefficiency of Jaccard Attention in Spiking Sentence Embeddings}
 
@@ -34,11 +35,49 @@ Spiking Neural Networks (SNNs) provide an energy-efficient alternative to conven
 
 \section{Introduction}
 
-The computational overhead of Dense Sentence Embedders (e.g., SBERT, SimCSE) is heavily dominated by the dense matrix multiplications required in standard Scaled Dot-Product Attention \citep{reimers2019sentence, gao2021simcse}. Spiking Neural Networks (SNNs) alleviate this constraint by operating on sparse, event-driven additions rather than complex multiplications. Recent neuromorphic NLP research has focused on translating Self-Attention to SNNs \citep{li2022spikeformer, zhu2023spikegpt}, such as the Sparse Coincidence-Based Semantic Attention \citep{coincidence2026} which relies on spike overlaps. However, a fundamental question persists: \textit{To what extent do the temporal recurrent dynamics of an SNN mitigate the need for explicit $\mathcal{O}(L^2)$ spatial attention mechanisms in sentence embedding tasks?}
+The computational overhead of Dense Sentence Embedders (e.g., SBERT, SimCSE) is heavily dominated by the dense matrix multiplications required in standard Scaled Dot-Product Attention \citep{reimers2019sentence, gao2021simcse}. Spiking Neural Networks (SNNs) alleviate this constraint by operating on sparse, event-driven additions rather than complex multiplications. Recent neuromorphic NLP research has focused on translating Self-Attention to SNNs \citep{li2022spikeformer, zhu2023spikegpt, lv2023spikebert}, such as the Sparse Coincidence-Based Semantic Attention \citep{coincidence2026} which relies on spike overlaps. Furthermore, the development of specialized frameworks like SpikingJelly \citep{fang2023spikingjelly} has accelerated the validation of surrogate gradient methods in deep architectures. However, a fundamental question persists: \textit{To what extent do the temporal recurrent dynamics of an SNN mitigate the need for explicit $\mathcal{O}(L^2)$ spatial attention mechanisms in sentence embedding tasks?}
 
 In this study, we systematically deconstruct the forward dynamics and learning mechanisms of an SNN sentence embedder down to its core computational primitives. We mathematically define a Jaccard-based Spiking Attention algorithm and contrast it against an attention-free Recurrent Pooler. Our empirical findings across a multi-phase evaluation indicate that the temporal integration capabilities of the recurrent pooler, when optimized via Backpropagation Through Time (BPTT) and Surrogate Gradients, are overwhelmingly sufficient for encoding semantic structures.
 
+\subsection*{Contributions}
+Our primary contributions in this study are as follows:
+\begin{enumerate}
+    \item We mathematically formulate Spike-Driven Jaccard Attention for semantic sentence embedding and empirically evaluate its computational trade-offs.
+    \item We introduce Hyperpolarized Padding, an SNN-native sequence padding mechanism that forces padding tokens into a negative refractory state to prevent noise accumulation.
+    \item We introduce Add-Only Delta BPTT routing, completely eliminating floating-point matrix multiplications during the backward pass of the recurrent temporal pooler.
+    \item We demonstrate that our attention-free recurrent pooling architecture achieves comparable semantic fidelity to spatial attention while offering a $4\times$ reduction in training cost and a $2\times$ reduction in inference latency.
+\end{enumerate}
+
 \section{Methodology: Architectural Dynamics and BPTT}
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[node distance=1.5cm, every node/.style={fill=white, font=\sffamily}, align=center]
+  % Define styles
+  \tikzstyle{block} = [rectangle, draw, fill=blue!10, text width=6em, text centered, rounded corners, minimum height=3em]
+  \tikzstyle{line} = [draw, -latex', thick]
+
+  % Nodes
+  \node [block] (input) {Input Tokens};
+  \node [block, below of=input] (embedding) {Spike Encoding \\(LIF)};
+  
+  \node [block, below left of=embedding, xshift=-2cm, yshift=-1.5cm, fill=green!10] (recurrent) {Recurrent \\Pooler \\(Proposed)};
+  \node [block, below right of=embedding, xshift=2cm, yshift=-1.5cm, fill=red!10] (attention) {Jaccard \\Attention \\(Baseline)};
+
+  \node [block, below right of=recurrent, xshift=2cm, yshift=-1.5cm] (output) {Semantic \\Embedding};
+
+  % Edges
+  \path [line] (input) -- (embedding);
+  \path [line] (embedding) -| node[above, pos=0.2] {Spikes $S^{(t)}$} (recurrent);
+  \path [line] (embedding) -| node[above, pos=0.2] {Spikes $S^{(t)}$} (attention);
+  
+  \path [line] (recurrent) |- node[above, pos=0.8] {$\sum V^{(t)}$} (output);
+  \path [line] (attention) |- node[above, pos=0.8] {$\sum V^{(t)}$} (output);
+
+\end{tikzpicture}
+\caption{Forward pipeline contrasting the Recurrent Pooler (proposed) against Jaccard Attention.}
+\label{fig:architecture}
+\end{figure}
 
 Our proposed Spiking Sentence Embedder aims to construct continuous semantic representations using entirely discrete, event-driven operations. The pipeline consists of Spike Encoding, a comparative Attention vs. Pooling mechanism, and Knowledge Distillation.
 
@@ -127,14 +166,14 @@ Fixing the dimension to $D_{model} = 256$, we performed an architectural ablatio
 \begin{table}[h]
 \centering
 \caption{Phase 2: Ablation of Spike-Driven Attention ($D_{model}=256$)}
-\begin{tabular}{lccc}
+\begin{tabular}{lcccc}
 \toprule
-\textbf{Architecture} & \textbf{ALL-STS} & \textbf{Inference} & \textbf{Train Time} \\
-\textbf{Variant} & \textbf{Pearson} & \textbf{(ms/pair)} & \textbf{(seconds)} \\
+\textbf{Architecture} & \textbf{ALL-STS} & \textbf{Inference} & \textbf{Train Time} & \textbf{Avg Spikes/} \\
+\textbf{Variant} & \textbf{Pearson} & \textbf{(ms/pair)} & \textbf{(seconds)} & \textbf{Sentence} \\
 \midrule
-\textbf{No-Attention (Recurrent)} & 0.8031 & \textbf{0.932} & \textbf{1,165} \\
-\textbf{Jaccard Attention} & \textbf{0.8079} & 1.946 & 4,817 \\
-Homogeneous-Init (Attn) & 0.7996 & 1.924 & 4,328 \\
+\textbf{No-Attention (Recurrent)} & 0.8031 & \textbf{0.932} & \textbf{1,165} & \textbf{2,157} \\
+\textbf{Jaccard Attention} & \textbf{0.8079} & 1.946 & 4,817 & 6,737 \\
+Homogeneous-Init (Attn) & 0.7996 & 1.924 & 4,328 & 6,687 \\
 \bottomrule
 \end{tabular}
 \end{table}
