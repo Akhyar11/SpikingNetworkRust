@@ -31,8 +31,8 @@ fn load_dataset(path: &str, limit: usize) -> (Vec<String>, Vec<f32>) {
 }
 
 fn main() {
-    let d_model = 128;
-    let num_train = 5000;
+    let d_model = 64;
+    let num_train = 30000;
     let num_test = 1000;
     let total_samples = num_train + num_test;
     
@@ -56,12 +56,13 @@ fn main() {
         bptt_beta_range: (0.8, 0.99), bptt_threshold_range: (0.5, 1.0),
     };
 
-    let mut embedder = SpikingSentenceEmbedder::new(tokenizer, 50000, config.clone());
+    let vocab_size = tokenizer.vocab_size();
+    let mut embedder = SpikingSentenceEmbedder::new(tokenizer, vocab_size, config.clone());
     
     let mut config_att = config.clone();
     config_att.learning_rate = 2.0; // Boost LR for Attention to help it converge faster
     let tokenizer2 = BPETokenizer::load("experiment/file_model/vocab.json");
-    let mut embedder_att = SpikingSentenceEmbedder::new(tokenizer2, 50000, config_att);
+    let mut embedder_att = SpikingSentenceEmbedder::new(tokenizer2, vocab_size, config_att);
 
     // FIX: Set Pooler to be a TRUE Identity Integrator so exact continuous gradients are mathematically correct
     for i in 0..d_model {
@@ -99,6 +100,13 @@ fn main() {
         let mut train_correct = 0;
         let mut test_loss = 0.0;
         let mut test_correct = 0;
+        let mut train_total_error = 0.0_f32;
+        let mut test_total_error = 0.0_f32;
+        let mut printed_examples = 0;
+        let mut train_preds = Vec::with_capacity(num_train);
+        let mut train_targs = Vec::with_capacity(num_train);
+        let mut test_preds = Vec::with_capacity(num_test);
+        let mut test_targs = Vec::with_capacity(num_test);
 
         let mini_batch_pairs = 10;
 
@@ -190,8 +198,26 @@ fn main() {
                 let off1 = b1 * embedder.pooler.units;
                 let off2 = b2 * embedder.pooler.units;
                 let sim = cosine_sim(&normalized_out_data[off1..off1+embedder.pooler.units], &normalized_out_data[off2..off2+embedder.pooler.units]);
-                if (sim - targets_mb[p]).abs() < 0.05 {
+                let err = (sim - targets_mb[p]).abs();
+                if is_train { 
+                    train_total_error += err; 
+                    train_preds.push(sim);
+                    train_targs.push(targets_mb[p]);
+                } else { 
+                    test_total_error += err; 
+                    test_preds.push(sim);
+                    test_targs.push(targets_mb[p]);
+                }
+                
+                if err < 0.05 {
                     if is_train { train_correct += 1; } else { test_correct += 1; }
+                }
+                
+                if print_log && !is_train && printed_examples < 5 {
+                    println!("   [Contoh {}] Target: {:.4} | Prediksi: {:.4} | Err: {:.4}", printed_examples + 1, targets_mb[p], sim, err);
+                    println!("              S1: '{}'", texts_mb[b1]);
+                    println!("              S2: '{}'\n", texts_mb[b2]);
+                    printed_examples += 1;
                 }
             }
 
@@ -223,8 +249,12 @@ fn main() {
         if print_log {
             let train_acc = (train_correct as f32 / num_train as f32) * 100.0;
             let test_acc = (test_correct as f32 / num_test as f32) * 100.0;
-            println!("   [TRAIN] Loss: {:.4} | Acc: {:.2}% ({} dari {})", train_loss, train_acc, train_correct, num_train);
-            println!("   [TEST]  Loss: {:.4} | Acc: {:.2}% ({} dari {})", test_loss, test_acc, test_correct, num_test);
+            let train_avg_err = train_total_error / (num_train as f32);
+            let test_avg_err = test_total_error / (num_test as f32);
+            let train_pearson = pearson(&train_preds, &train_targs);
+            let test_pearson = pearson(&test_preds, &test_targs);
+            println!("   [TRAIN] Loss: {:.4} | Acc: {:.2}% ({} dari {}) | Err: {:.4} | Pearson: {:.4}", train_loss, train_acc, train_correct, num_train, train_avg_err, train_pearson);
+            println!("   [TEST]  Loss: {:.4} | Acc: {:.2}% ({} dari {}) | Err: {:.4} | Pearson: {:.4}", test_loss, test_acc, test_correct, num_test, test_avg_err, test_pearson);
             let epoch_duration = epoch_start.elapsed();
             println!("   [TIME] Epoch {} selesai dalam: {} ms", epoch, epoch_duration.as_millis());
         }
@@ -248,6 +278,13 @@ fn main() {
         let mut train_correct = 0;
         let mut test_loss = 0.0;
         let mut test_correct = 0;
+        let mut train_total_error = 0.0_f32;
+        let mut test_total_error = 0.0_f32;
+        let mut printed_examples = 0;
+        let mut train_preds = Vec::with_capacity(num_train);
+        let mut train_targs = Vec::with_capacity(num_train);
+        let mut test_preds = Vec::with_capacity(num_test);
+        let mut test_targs = Vec::with_capacity(num_test);
 
         let mini_batch_pairs = 10;
 
@@ -342,8 +379,26 @@ fn main() {
                 let off1 = b1 * embedder_att.pooler.units;
                 let off2 = b2 * embedder_att.pooler.units;
                 let sim = cosine_sim(&normalized_out_data[off1..off1+embedder_att.pooler.units], &normalized_out_data[off2..off2+embedder_att.pooler.units]);
-                if (sim - targets_mb[p]).abs() < 0.05 {
+                let err = (sim - targets_mb[p]).abs();
+                if is_train { 
+                    train_total_error += err; 
+                    train_preds.push(sim);
+                    train_targs.push(targets_mb[p]);
+                } else { 
+                    test_total_error += err; 
+                    test_preds.push(sim);
+                    test_targs.push(targets_mb[p]);
+                }
+                
+                if err < 0.05 {
                     if is_train { train_correct += 1; } else { test_correct += 1; }
+                }
+                
+                if print_log && !is_train && printed_examples < 5 {
+                    println!("   [Contoh {}] Target: {:.4} | Prediksi: {:.4} | Err: {:.4}", printed_examples + 1, targets_mb[p], sim, err);
+                    println!("              S1: '{}'", texts_mb[b1]);
+                    println!("              S2: '{}'\n", texts_mb[b2]);
+                    printed_examples += 1;
                 }
             }
 
@@ -394,8 +449,12 @@ fn main() {
         if print_log {
             let train_acc = (train_correct as f32 / num_train as f32) * 100.0;
             let test_acc = (test_correct as f32 / num_test as f32) * 100.0;
-            println!("   [TRAIN] Loss: {:.4} | Acc: {:.2}% ({} dari {})", train_loss, train_acc, train_correct, num_train);
-            println!("   [TEST]  Loss: {:.4} | Acc: {:.2}% ({} dari {})", test_loss, test_acc, test_correct, num_test);
+            let train_avg_err = train_total_error / (num_train as f32);
+            let test_avg_err = test_total_error / (num_test as f32);
+            let train_pearson = pearson(&train_preds, &train_targs);
+            let test_pearson = pearson(&test_preds, &test_targs);
+            println!("   [TRAIN] Loss: {:.4} | Acc: {:.2}% ({} dari {}) | Err: {:.4} | Pearson: {:.4}", train_loss, train_acc, train_correct, num_train, train_avg_err, train_pearson);
+            println!("   [TEST]  Loss: {:.4} | Acc: {:.2}% ({} dari {}) | Err: {:.4} | Pearson: {:.4}", test_loss, test_acc, test_correct, num_test, test_avg_err, test_pearson);
             let epoch_duration = epoch_start.elapsed();
             println!("   [TIME] Epoch {} selesai dalam: {} ms", epoch, epoch_duration.as_millis());
         }
@@ -409,4 +468,17 @@ fn cosine_sim(a: &[f32], b: &[f32]) -> f32 {
     }
     if na == 0.0 || nb == 0.0 { return 0.0; }
     dot / (na.sqrt() * nb.sqrt())
+}
+
+fn pearson(x: &[f32], y: &[f32]) -> f32 {
+    let n = x.len() as f32;
+    if n == 0.0 { return 0.0; }
+    let (sx, sy): (f32, f32) = (x.iter().sum(), y.iter().sum());
+    let (sxx, syy, sxy): (f32, f32, f32) = (
+        x.iter().map(|&v| v*v).sum(), y.iter().map(|&v| v*v).sum(),
+        x.iter().zip(y.iter()).map(|(&a,&b)| a*b).sum(),
+    );
+    let num = n*sxy - sx*sy;
+    let den = ((n*sxx - sx*sx).max(0.0) * (n*syy - sy*sy).max(0.0)).sqrt();
+    if den == 0.0 { 0.0 } else { num/den }
 }

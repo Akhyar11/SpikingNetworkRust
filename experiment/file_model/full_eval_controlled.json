@@ -1,363 +1,516 @@
 {
-  "controlled_initialization": true,
+  "best_d_model": 256,
+  "best_method": "Distillation",
   "evaluation": {
-    "Ablation: No-Attention": {
+    "Phase1_Distillation": {
       "results": {
-        "All-STS-Teacher": {
-          "ms_per_pair": 1.6848347034320321,
+        "ALL-STS": {
+          "ms_per_pair": 0.9078878727119785,
           "n_pairs": 29720,
-          "pearson": 0.7471222877502441
+          "pearson": 0.7091849446296692
         },
         "SICK-R": {
-          "ms_per_pair": 1.54136749108492,
+          "ms_per_pair": 0.824808648433565,
           "n_pairs": 9927,
-          "pearson": 0.42324298620224
+          "pearson": 0.48654884099960327
         },
         "STS-12": {
-          "ms_per_pair": 1.7537838014800513,
+          "ms_per_pair": 1.005912572072072,
           "n_pairs": 3108,
-          "pearson": 0.45879051089286804
+          "pearson": 0.41655978560447693
         },
         "STS-13": {
-          "ms_per_pair": 1.626452982,
+          "ms_per_pair": 0.9413279646666667,
           "n_pairs": 1500,
-          "pearson": 0.4431300163269043
+          "pearson": 0.3106071650981903
         },
         "STS-14": {
-          "ms_per_pair": 1.6760587170666668,
+          "ms_per_pair": 0.9469404304,
           "n_pairs": 3750,
-          "pearson": 0.4751637578010559
+          "pearson": 0.3675796389579773
         },
         "STS-15": {
-          "ms_per_pair": 1.7023224980000002,
+          "ms_per_pair": 0.93510041,
           "n_pairs": 3000,
-          "pearson": 0.5187556743621826
+          "pearson": 0.41881340742111206
         },
         "STS-16": {
-          "ms_per_pair": 1.7704120935919052,
+          "ms_per_pair": 1.0033019645868466,
           "n_pairs": 1186,
-          "pearson": 0.3625486493110657
+          "pearson": 0.31451889872550964
         },
         "STS-B": {
-          "ms_per_pair": 1.7415553646666668,
+          "ms_per_pair": 1.050177766,
           "n_pairs": 1500,
-          "pearson": 0.6856297850608826
+          "pearson": 0.6656071543693542
         },
         "_energy": {
-          "average_spikes_per_sentence": 3922.2290514238884,
-          "energy_savings_ratio": 476.202683604605,
-          "snn_sops_per_sentence": 3012271.9114935463,
+          "average_spikes_per_sentence": 1668.266394740273,
+          "energy_savings_ratio": 18042.24909825347,
+          "snn_sops_per_sentence": 79505.16369596394,
           "transformer_macs_estimated": 1434451968.0
         }
       },
-      "train_time_seconds": 1208.522581308
+      "train_time_seconds": 1074.736797949
     },
-    "Ablation: T=16": {
+    "Phase1_Human-Only": {
       "results": {
-        "All-STS-Teacher": {
-          "ms_per_pair": 1.5964699766823687,
+        "ALL-STS": {
+          "ms_per_pair": 0.7761002577725437,
           "n_pairs": 29720,
-          "pearson": 0.727239727973938
+          "pearson": 0.6665732264518738
         },
         "SICK-R": {
-          "ms_per_pair": 1.4738059977838218,
+          "ms_per_pair": 0.6699347790873376,
           "n_pairs": 9927,
-          "pearson": 0.4295946955680847
+          "pearson": 0.3932696282863617
         },
         "STS-12": {
-          "ms_per_pair": 1.6149812313384815,
+          "ms_per_pair": 0.7953206624839125,
           "n_pairs": 3108,
-          "pearson": 0.46347615122795105
+          "pearson": 0.394911527633667
         },
         "STS-13": {
-          "ms_per_pair": 1.5910708593333331,
+          "ms_per_pair": 0.735828862,
           "n_pairs": 1500,
-          "pearson": 0.4243229627609253
+          "pearson": 0.3554389476776123
         },
         "STS-14": {
-          "ms_per_pair": 1.6378447514666667,
+          "ms_per_pair": 0.7370993936,
           "n_pairs": 3750,
-          "pearson": 0.4357394874095917
+          "pearson": 0.39351561665534973
         },
         "STS-15": {
-          "ms_per_pair": 1.6415118679999998,
+          "ms_per_pair": 0.7530206799999999,
           "n_pairs": 3000,
-          "pearson": 0.519224226474762
+          "pearson": 0.45337823033332825
         },
         "STS-16": {
-          "ms_per_pair": 1.729291950252951,
+          "ms_per_pair": 0.8099248094435076,
           "n_pairs": 1186,
-          "pearson": 0.35460275411605835
+          "pearson": 0.34653905034065247
         },
         "STS-B": {
-          "ms_per_pair": 1.6299808166666667,
+          "ms_per_pair": 0.8138458006666667,
           "n_pairs": 1500,
-          "pearson": 0.6338964700698853
+          "pearson": 0.6089519262313843
         },
         "_energy": {
-          "average_spikes_per_sentence": 3556.479298206403,
-          "energy_savings_ratio": 525.1755580137788,
-          "snn_sops_per_sentence": 2731376.101022518,
+          "average_spikes_per_sentence": 1685.9448324672665,
+          "energy_savings_ratio": 13503.291163700613,
+          "snn_sops_per_sentence": 106229.80357974334,
           "transformer_macs_estimated": 1434451968.0
         }
       },
-      "train_time_seconds": 1014.297351042
+      "train_time_seconds": 7.16550971
     },
-    "Ablation: T=64": {
+    "Phase1_SimCSE": {
       "results": {
-        "All-STS-Teacher": {
-          "ms_per_pair": 3.4971158635935393,
+        "ALL-STS": {
+          "ms_per_pair": 4.555927994111709,
           "n_pairs": 29720,
-          "pearson": 0.7490633726119995
+          "pearson": 0.64778733253479
         },
         "SICK-R": {
-          "ms_per_pair": 3.2888607334542157,
+          "ms_per_pair": 4.452407570061449,
           "n_pairs": 9927,
-          "pearson": 0.42968669533729553
+          "pearson": 0.3840773403644562
         },
         "STS-12": {
-          "ms_per_pair": 3.6529223655083656,
+          "ms_per_pair": 4.609806970720721,
           "n_pairs": 3108,
-          "pearson": 0.449477881193161
+          "pearson": 0.3629928231239319
         },
         "STS-13": {
-          "ms_per_pair": 3.4907276019999998,
+          "ms_per_pair": 4.53294211,
           "n_pairs": 1500,
-          "pearson": 0.44182443618774414
+          "pearson": 0.3567790389060974
         },
         "STS-14": {
-          "ms_per_pair": 3.5361416434666664,
+          "ms_per_pair": 4.512610544,
           "n_pairs": 3750,
-          "pearson": 0.47429966926574707
+          "pearson": 0.38970857858657837
         },
         "STS-15": {
-          "ms_per_pair": 3.542222194333333,
+          "ms_per_pair": 4.534338085666667,
           "n_pairs": 3000,
-          "pearson": 0.5160307288169861
+          "pearson": 0.4526287615299225
         },
         "STS-16": {
-          "ms_per_pair": 3.7084934207419895,
+          "ms_per_pair": 4.6030099848229336,
           "n_pairs": 1186,
-          "pearson": 0.36504948139190674
+          "pearson": 0.3443824052810669
         },
         "STS-B": {
-          "ms_per_pair": 3.6316509726666664,
+          "ms_per_pair": 4.575482910666667,
           "n_pairs": 1500,
-          "pearson": 0.6919988393783569
+          "pearson": 0.5849600434303284
         },
         "_energy": {
-          "average_spikes_per_sentence": 3994.3100147138252,
-          "energy_savings_ratio": 467.609172327556,
-          "snn_sops_per_sentence": 3067630.091300218,
+          "average_spikes_per_sentence": 1686.1880017135088,
+          "energy_savings_ratio": 13464.416993650195,
+          "snn_sops_per_sentence": 106536.50794360321,
           "transformer_macs_estimated": 1434451968.0
         }
       },
-      "train_time_seconds": 1424.72050717
+      "train_time_seconds": 470.618742411
     },
-    "Human-Only (STS-B) [384d, T=128]": {
+    "Phase2_d128": {
       "results": {
-        "All-STS-Teacher": {
-          "ms_per_pair": 5.936020538997309,
+        "ALL-STS": {
+          "ms_per_pair": 1.3412850540713324,
           "n_pairs": 29720,
-          "pearson": 0.7265605926513672
+          "pearson": 0.8038324117660522
         },
         "SICK-R": {
-          "ms_per_pair": 5.693952422282663,
+          "ms_per_pair": 1.1846166236526645,
           "n_pairs": 9927,
-          "pearson": 0.40794917941093445
+          "pearson": 0.4838416874408722
         },
         "STS-12": {
-          "ms_per_pair": 5.962228579150579,
+          "ms_per_pair": 1.42717637001287,
           "n_pairs": 3108,
-          "pearson": 0.4243698716163635
+          "pearson": 0.49548283219337463
         },
         "STS-13": {
-          "ms_per_pair": 5.834292467999999,
+          "ms_per_pair": 1.3069521206666668,
           "n_pairs": 1500,
-          "pearson": 0.4310552477836609
+          "pearson": 0.42117854952812195
         },
         "STS-14": {
-          "ms_per_pair": 5.8898851616,
+          "ms_per_pair": 1.3060170464,
           "n_pairs": 3750,
-          "pearson": 0.45760849118232727
+          "pearson": 0.4801889657974243
         },
         "STS-15": {
-          "ms_per_pair": 5.918845923666668,
+          "ms_per_pair": 1.3058509586666667,
           "n_pairs": 3000,
-          "pearson": 0.5043380260467529
+          "pearson": 0.527405321598053
         },
         "STS-16": {
-          "ms_per_pair": 6.11226765598651,
+          "ms_per_pair": 1.3982622537942662,
           "n_pairs": 1186,
-          "pearson": 0.3733871579170227
+          "pearson": 0.3931795358657837
         },
         "STS-B": {
-          "ms_per_pair": 5.907689852666667,
+          "ms_per_pair": 1.4650968453333335,
           "n_pairs": 1500,
-          "pearson": 0.669992208480835
+          "pearson": 0.7684705257415771
         },
         "_energy": {
-          "average_spikes_per_sentence": 4134.179527295078,
-          "energy_savings_ratio": 451.78879815653625,
-          "snn_sops_per_sentence": 3175049.8769626194,
+          "average_spikes_per_sentence": 3358.786873032724,
+          "energy_savings_ratio": 4229.158401504799,
+          "snn_sops_per_sentence": 339181.42377679684,
           "transformer_macs_estimated": 1434451968.0
         }
       },
-      "train_time_seconds": 57.677262656
+      "train_time_seconds": 2025.748367853
     },
-    "Knowledge Distillation (AI) [384d, T=128]": {
+    "Phase2_d256": {
       "results": {
-        "All-STS-Teacher": {
-          "ms_per_pair": 5.965712053297443,
+        "ALL-STS": {
+          "ms_per_pair": 1.946289594986541,
           "n_pairs": 29720,
-          "pearson": 0.7514241337776184
+          "pearson": 0.8079048991203308
         },
         "SICK-R": {
-          "ms_per_pair": 5.741265259091366,
+          "ms_per_pair": 1.7231636992041908,
           "n_pairs": 9927,
-          "pearson": 0.42428550124168396
+          "pearson": 0.48186469078063965
         },
         "STS-12": {
-          "ms_per_pair": 6.095745550514801,
+          "ms_per_pair": 2.1883579543114546,
           "n_pairs": 3108,
-          "pearson": 0.4639745354652405
+          "pearson": 0.5154639482498169
         },
         "STS-13": {
-          "ms_per_pair": 6.012834591999999,
+          "ms_per_pair": 1.984863075333333,
           "n_pairs": 1500,
-          "pearson": 0.43823644518852234
+          "pearson": 0.44275131821632385
         },
         "STS-14": {
-          "ms_per_pair": 5.990707363733334,
+          "ms_per_pair": 1.9825273917333335,
           "n_pairs": 3750,
-          "pearson": 0.4760242998600006
+          "pearson": 0.49482497572898865
         },
         "STS-15": {
-          "ms_per_pair": 6.016099202,
+          "ms_per_pair": 1.9982186253333336,
           "n_pairs": 3000,
-          "pearson": 0.5189185738563538
+          "pearson": 0.5250961184501648
         },
         "STS-16": {
-          "ms_per_pair": 6.168406882799325,
+          "ms_per_pair": 2.194882031197302,
           "n_pairs": 1186,
-          "pearson": 0.3698132038116455
+          "pearson": 0.40184006094932556
         },
         "STS-B": {
-          "ms_per_pair": 6.080031062,
+          "ms_per_pair": 2.2142582293333333,
           "n_pairs": 1500,
-          "pearson": 0.6913212537765503
+          "pearson": 0.7740347981452942
         },
         "_energy": {
-          "average_spikes_per_sentence": 3990.77541859902,
-          "energy_savings_ratio": 468.0233298258841,
-          "snn_sops_per_sentence": 3064915.5214840476,
+          "average_spikes_per_sentence": 6737.417313888734,
+          "energy_savings_ratio": 1019.1905586038482,
+          "snn_sops_per_sentence": 1407442.3628541096,
           "transformer_macs_estimated": 1434451968.0
         }
       },
-      "train_time_seconds": 1890.496555337
+      "train_time_seconds": 4753.392617723
     },
-    "Knowledge Distillation (Homogeneous)": {
+    "Phase2_d32": {
       "results": {
-        "All-STS-Teacher": {
-          "ms_per_pair": 5.716628306729476,
+        "ALL-STS": {
+          "ms_per_pair": 0.7185809163189771,
           "n_pairs": 29720,
-          "pearson": 0.7580876350402832
+          "pearson": 0.6713421940803528
         },
         "SICK-R": {
-          "ms_per_pair": 5.521435764883651,
+          "ms_per_pair": 0.6587409655485041,
           "n_pairs": 9927,
-          "pearson": 0.443569540977478
+          "pearson": 0.44765758514404297
         },
         "STS-12": {
-          "ms_per_pair": 5.898118342985843,
+          "ms_per_pair": 0.8020520038610038,
           "n_pairs": 3108,
-          "pearson": 0.4741477966308594
+          "pearson": 0.32799768447875977
         },
         "STS-13": {
-          "ms_per_pair": 5.761670854,
+          "ms_per_pair": 0.7420100006666667,
           "n_pairs": 1500,
-          "pearson": 0.45025861263275146
+          "pearson": 0.3291396498680115
         },
         "STS-14": {
-          "ms_per_pair": 5.840823679733333,
+          "ms_per_pair": 0.7346624042666666,
           "n_pairs": 3750,
-          "pearson": 0.48138684034347534
+          "pearson": 0.3542693257331848
         },
         "STS-15": {
-          "ms_per_pair": 5.817918061333334,
+          "ms_per_pair": 0.739372797,
           "n_pairs": 3000,
-          "pearson": 0.5357455015182495
+          "pearson": 0.37130236625671387
         },
         "STS-16": {
-          "ms_per_pair": 5.9268380193929175,
+          "ms_per_pair": 0.7806111365935919,
           "n_pairs": 1186,
-          "pearson": 0.3875124156475067
+          "pearson": 0.324817419052124
         },
         "STS-B": {
-          "ms_per_pair": 5.888091542666667,
+          "ms_per_pair": 0.8612747980000001,
           "n_pairs": 1500,
-          "pearson": 0.6959257125854492
+          "pearson": 0.6665070652961731
         },
         "_energy": {
-          "average_spikes_per_sentence": 2494.1109869438083,
-          "energy_savings_ratio": 748.8744525714568,
-          "snn_sops_per_sentence": 1915477.2379728446,
+          "average_spikes_per_sentence": 840.7434951854128,
+          "energy_savings_ratio": 82991.71133947103,
+          "snn_sops_per_sentence": 17284.279897934477,
           "transformer_macs_estimated": 1434451968.0
         }
       },
-      "train_time_seconds": 1494.750027101
+      "train_time_seconds": 681.825175355
     },
-    "Unsupervised SimCSE [384d, T=128]": {
+    "Phase2_d64": {
       "results": {
-        "All-STS-Teacher": {
-          "ms_per_pair": 6.327060600100943,
+        "ALL-STS": {
+          "ms_per_pair": 0.9118881156123821,
           "n_pairs": 29720,
-          "pearson": 0.5831401944160461
+          "pearson": 0.7091849446296692
         },
         "SICK-R": {
-          "ms_per_pair": 6.073518312481112,
+          "ms_per_pair": 0.8313577132064067,
           "n_pairs": 9927,
-          "pearson": 0.35814499855041504
+          "pearson": 0.48654884099960327
         },
         "STS-12": {
-          "ms_per_pair": 6.35802798069498,
+          "ms_per_pair": 1.0099342168597167,
           "n_pairs": 3108,
-          "pearson": 0.32394757866859436
+          "pearson": 0.41655978560447693
         },
         "STS-13": {
-          "ms_per_pair": 6.184032050000001,
+          "ms_per_pair": 0.9416827666666666,
           "n_pairs": 1500,
-          "pearson": 0.3459000587463379
+          "pearson": 0.3106071650981903
         },
         "STS-14": {
-          "ms_per_pair": 6.219386281599999,
+          "ms_per_pair": 0.9342404943999999,
           "n_pairs": 3750,
-          "pearson": 0.36383503675460815
+          "pearson": 0.3675796389579773
         },
         "STS-15": {
-          "ms_per_pair": 6.284844047,
+          "ms_per_pair": 0.9380243363333333,
           "n_pairs": 3000,
-          "pearson": 0.43362152576446533
+          "pearson": 0.41881340742111206
         },
         "STS-16": {
-          "ms_per_pair": 6.518243589376055,
+          "ms_per_pair": 0.9958683212478919,
           "n_pairs": 1186,
-          "pearson": 0.312730610370636
+          "pearson": 0.31451889872550964
         },
         "STS-B": {
-          "ms_per_pair": 6.321153962,
+          "ms_per_pair": 1.0319858846666667,
           "n_pairs": 1500,
-          "pearson": 0.5245099663734436
+          "pearson": 0.6656071543693542
         },
         "_energy": {
-          "average_spikes_per_sentence": 9005.366923692984,
-          "energy_savings_ratio": 331.4872020366254,
-          "snn_sops_per_sentence": 4327322.319494887,
+          "average_spikes_per_sentence": 1668.266394740273,
+          "energy_savings_ratio": 18042.24909825347,
+          "snn_sops_per_sentence": 79505.16369596394,
           "transformer_macs_estimated": 1434451968.0
         }
       },
-      "train_time_seconds": 834.773304392
+      "train_time_seconds": 1078.89942483
+    },
+    "Phase3_Attention": {
+      "results": {
+        "ALL-STS": {
+          "ms_per_pair": 1.946466540679677,
+          "n_pairs": 29720,
+          "pearson": 0.8079048991203308
+        },
+        "SICK-R": {
+          "ms_per_pair": 1.711351133877304,
+          "n_pairs": 9927,
+          "pearson": 0.48186469078063965
+        },
+        "STS-12": {
+          "ms_per_pair": 2.214539105855856,
+          "n_pairs": 3108,
+          "pearson": 0.5154639482498169
+        },
+        "STS-13": {
+          "ms_per_pair": 2.015215072,
+          "n_pairs": 1500,
+          "pearson": 0.44275131821632385
+        },
+        "STS-14": {
+          "ms_per_pair": 1.9924176664000002,
+          "n_pairs": 3750,
+          "pearson": 0.49482497572898865
+        },
+        "STS-15": {
+          "ms_per_pair": 1.9842855813333333,
+          "n_pairs": 3000,
+          "pearson": 0.5250961184501648
+        },
+        "STS-16": {
+          "ms_per_pair": 2.135777741989882,
+          "n_pairs": 1186,
+          "pearson": 0.40184006094932556
+        },
+        "STS-B": {
+          "ms_per_pair": 2.242220376,
+          "n_pairs": 1500,
+          "pearson": 0.7740347981452942
+        },
+        "_energy": {
+          "average_spikes_per_sentence": 6737.417313888734,
+          "energy_savings_ratio": 1019.1905586038482,
+          "snn_sops_per_sentence": 1407442.3628541096,
+          "transformer_macs_estimated": 1434451968.0
+        }
+      },
+      "train_time_seconds": 4817.241420132
+    },
+    "Phase3_Homogeneous-Init": {
+      "results": {
+        "ALL-STS": {
+          "ms_per_pair": 1.9248159407469716,
+          "n_pairs": 29720,
+          "pearson": 0.7996862530708313
+        },
+        "SICK-R": {
+          "ms_per_pair": 1.707748443840032,
+          "n_pairs": 9927,
+          "pearson": 0.4864670932292938
+        },
+        "STS-12": {
+          "ms_per_pair": 2.1595230025740024,
+          "n_pairs": 3108,
+          "pearson": 0.4911794662475586
+        },
+        "STS-13": {
+          "ms_per_pair": 1.9728646979999998,
+          "n_pairs": 1500,
+          "pearson": 0.43527156114578247
+        },
+        "STS-14": {
+          "ms_per_pair": 1.9540628661333332,
+          "n_pairs": 3750,
+          "pearson": 0.4907863736152649
+        },
+        "STS-15": {
+          "ms_per_pair": 2.02600048,
+          "n_pairs": 3000,
+          "pearson": 0.5171777606010437
+        },
+        "STS-16": {
+          "ms_per_pair": 2.1541294983136594,
+          "n_pairs": 1186,
+          "pearson": 0.37578141689300537
+        },
+        "STS-B": {
+          "ms_per_pair": 2.19554424,
+          "n_pairs": 1500,
+          "pearson": 0.7383419275283813
+        },
+        "_energy": {
+          "average_spikes_per_sentence": 6687.238941349575,
+          "energy_savings_ratio": 1179.2075684948495,
+          "snn_sops_per_sentence": 1216454.1733996386,
+          "transformer_macs_estimated": 1434451968.0
+        }
+      },
+      "train_time_seconds": 4328.952768646
+    },
+    "Phase3_No-Attention": {
+      "results": {
+        "ALL-STS": {
+          "ms_per_pair": 0.9323041489569314,
+          "n_pairs": 29720,
+          "pearson": 0.8031476736068726
+        },
+        "SICK-R": {
+          "ms_per_pair": 0.7766380244786945,
+          "n_pairs": 9927,
+          "pearson": 0.4744698107242584
+        },
+        "STS-12": {
+          "ms_per_pair": 1.0952638738738738,
+          "n_pairs": 3108,
+          "pearson": 0.5343254804611206
+        },
+        "STS-13": {
+          "ms_per_pair": 1.007402272,
+          "n_pairs": 1500,
+          "pearson": 0.44720178842544556
+        },
+        "STS-14": {
+          "ms_per_pair": 0.9870978576,
+          "n_pairs": 3750,
+          "pearson": 0.508294939994812
+        },
+        "STS-15": {
+          "ms_per_pair": 0.9890346623333334,
+          "n_pairs": 3000,
+          "pearson": 0.5228192806243896
+        },
+        "STS-16": {
+          "ms_per_pair": 1.088282037099494,
+          "n_pairs": 1186,
+          "pearson": 0.36475542187690735
+        },
+        "STS-B": {
+          "ms_per_pair": 1.126673584,
+          "n_pairs": 1500,
+          "pearson": 0.765131413936615
+        },
+        "_energy": {
+          "average_spikes_per_sentence": 2157.1103164403717,
+          "energy_savings_ratio": 1298.8042283452894,
+          "snn_sops_per_sentence": 1104440.4820174703,
+          "transformer_macs_estimated": 1434451968.0
+        }
+      },
+      "train_time_seconds": 1165.308457477
     }
-  },
-  "init_weights_file": "experiment/file_model/init_weights.json"
+  }
 }
