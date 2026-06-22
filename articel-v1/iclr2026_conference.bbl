@@ -1,0 +1,87 @@
+\begin{thebibliography}{13}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Devlin et~al.(2018)Devlin, Chang, Lee, and Toutanova]{devlin2018bert}
+Jacob Devlin, Ming-Wei Chang, Kenton Lee, and Kristina Toutanova.
+\newblock Bert: Pre-training of deep bidirectional transformers for language
+  understanding.
+\newblock \emph{arXiv preprint arXiv:1810.04805}, 2018.
+
+\bibitem[Gao et~al.(2021)Gao, Yao, and Chen]{gao2021simcse}
+Tianyu Gao, Xingcheng Yao, and Danqi Chen.
+\newblock Simcse: Simple contrastive learning of sentence embeddings.
+\newblock In \emph{Proceedings of the 2021 Conference on Empirical Methods in
+  Natural Language Processing}, pp.\  6894--6910, 2021.
+
+\bibitem[Hinton et~al.(2015)Hinton, Vinyals, and Dean]{hinton2015distilling}
+Geoffrey Hinton, Oriol Vinyals, and Jeff Dean.
+\newblock Distilling the knowledge in a neural network.
+\newblock \emph{arXiv preprint arXiv:1503.02531}, 2015.
+
+\bibitem[Kitaev et~al.(2020)Kitaev, Kaiser, and Levskaya]{kitaev2020reformer}
+Nikita Kitaev, {\L}ukasz Kaiser, and Anselm Levskaya.
+\newblock Reformer: The efficient transformer.
+\newblock \emph{arXiv preprint arXiv:2001.04451}, 2020.
+
+\bibitem[Li et~al.(2022)Li, Lei, and Yang]{li2022spikeformer}
+Yudong Li, Yunlin Lei, and Xu~Yang.
+\newblock Spikeformer: A novel architecture for training high-performance
+  low-latency spiking neural network.
+\newblock \emph{arXiv preprint arXiv:2211.10686}, 2022.
+
+\bibitem[Neftci et~al.(2019)Neftci, Mostafa, and Zenke]{neftci2019surrogate}
+Emre~O Neftci, Hesham Mostafa, and Friedemann Zenke.
+\newblock Surrogate gradient learning in spiking neural networks: Bringing the
+  power of gradient-based optimization to spiking neural networks.
+\newblock \emph{IEEE Signal Processing Magazine}, 36\penalty0 (6):\penalty0
+  51--63, 2019.
+
+\bibitem[Reimers \& Gurevych(2019)Reimers and Gurevych]{reimers2019sentence}
+Nils Reimers and Iryna Gurevych.
+\newblock Sentence-bert: Sentence embeddings using siamese bert-networks.
+\newblock In \emph{Proceedings of the 2019 Conference on Empirical Methods in
+  Natural Language Processing and the 9th International Joint Conference on
+  Natural Language Processing (EMNLP-IJCNLP)}, pp.\  3982--3992, 2019.
+
+\bibitem[Roy et~al.(2019)Roy, Jaiswal, and Panda]{roy2019towards}
+Kaushik Roy, Akhilesh Jaiswal, and Priyadarshini Panda.
+\newblock Towards spike-based machine intelligence with neuromorphic computing.
+\newblock \emph{Nature}, 575\penalty0 (7784):\penalty0 607--617, 2019.
+
+\bibitem[Tay et~al.(2022)Tay, Dehghani, Bahri, and Metzler]{tay2022efficient}
+Yi~Tay, Mostafa~forms Dehghani, Dara Bahri, and Donald Metzler.
+\newblock Efficient transformers: A survey.
+\newblock \emph{ACM Computing Surveys (CSUR)}, 55\penalty0 (6):\penalty0 1--28,
+  2022.
+
+\bibitem[Vaswani et~al.(2017)Vaswani, Shazeer, Parmar, Uszkoreit, Jones, Gomez,
+  Kaiser, and Polosukhin]{vaswani2017attention}
+Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones,
+  Aidan~N Gomez, {\L}ukasz Kaiser, and Illia Polosukhin.
+\newblock Attention is all you need.
+\newblock \emph{Advances in neural information processing systems}, 30, 2017.
+
+\bibitem[Wang et~al.(2020)Wang, Li, Khabsa, Fang, and Ma]{wang2020linformer}
+Sinong Wang, Belinda~Z Li, Madian Khabsa, Hao Fang, and Hao Ma.
+\newblock Linformer: Self-attention with linear complexity.
+\newblock \emph{arXiv preprint arXiv:2006.04768}, 2020.
+
+\bibitem[Wu et~al.(2018)Wu, Deng, Li, Zhu, and Shi]{wu2018spatio}
+Yujie Wu, Lei Deng, Guoqi Li, Jun Zhu, and Luping Shi.
+\newblock Spatio-temporal backpropagation for training high-performance spiking
+  neural networks.
+\newblock \emph{Frontiers in neuroscience}, 12:\penalty0 331, 2018.
+
+\bibitem[Zhu et~al.(2023)Zhu, Zhao, Zhang, Deng, Li, Duan, Cheng,
+  et~al.]{zhu2023spikegpt}
+Rui-Jie Zhu, Qiao Zhao, Guobin Zhang, Pengjie Deng, Hai Li, Yikang Duan, Xiang
+  Cheng, et~al.
+\newblock Spikegpt: Generative pre-trained language model with spiking neural
+  networks.
+\newblock \emph{arXiv preprint arXiv:2302.13939}, 2023.
+
+\end{thebibliography}

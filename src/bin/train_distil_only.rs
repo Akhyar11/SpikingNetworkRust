@@ -38,12 +38,21 @@ fn apply_init(embedder: &mut SpikingSentenceEmbedder, init: &serde_json::Value) 
 }
 
 fn new_embedder(tokenizer: BPETokenizer, vocab_size: usize, d_model: usize, max_seq_length: usize) -> SpikingSentenceEmbedder {
-    SpikingSentenceEmbedder::new(tokenizer, vocab_size, sentence_embedder::SNNConfig {
+    let mut embedder = SpikingSentenceEmbedder::new(tokenizer, vocab_size, sentence_embedder::SNNConfig {
         d_model, max_seq_length, learning_rate: 0.01,
         clip_min: -1.0, clip_max: 1.0,
-        att_beta_range: (0.8, 0.9), att_threshold_range: (0.1, 0.3),
-        bptt_beta_range: (0.8, 0.9), bptt_threshold_range: (0.5, 1.0),
-    })
+        att_beta_range: (0.8, 0.99), att_threshold_range: (-1.0, -0.5),
+        bptt_beta_range: (0.8, 0.99), bptt_threshold_range: (0.5, 1.0),
+    });
+
+    for i in 0..d_model {
+        for j in 0..d_model {
+            embedder.pooler.kernel[i * d_model + j] = if i == j { 1.0 } else { 0.0 };
+        }
+        embedder.pooler.bias[i] = 0.0;
+    }
+
+    embedder
 }
 
 fn cosine_sim(a: &[f32], b: &[f32]) -> f32 {
@@ -98,6 +107,27 @@ fn evaluate_stsb(embedder: &mut SpikingSentenceEmbedder, eval_data: &[STSPair]) 
     (pearson(&preds, &targets), ms_per_pair, dur)
 }
 
+fn print_progress_bar(step: usize, total_steps: usize, start_time: Instant) {
+    use std::io::Write;
+    let progress = step as f64 / total_steps as f64;
+    let bar_length = 40;
+    let filled = (progress * bar_length as f64) as usize;
+    let empty = bar_length - filled;
+    
+    let elapsed = start_time.elapsed().as_secs_f64();
+    let mut eta = 0.0;
+    if step > 0 {
+        let time_per_step = elapsed / step as f64;
+        eta = time_per_step * (total_steps - step) as f64;
+    }
+    
+    print!("\r    [");
+    for _ in 0..filled { print!("="); }
+    for _ in 0..empty { print!("-"); }
+    print!("] {:.1}% | Step {}/{} | Elapsed: {:.1}s | ETA: {:.1}s", progress * 100.0, step, total_steps, elapsed, eta);
+    std::io::stdout().flush().unwrap();
+}
+
 fn train_distil(tokenizer: BPETokenizer, vocab_size: usize, init: &serde_json::Value, d_model: usize, use_init: bool, init_d_model: usize, max_seq_length: usize) -> SpikingSentenceEmbedder {
     // BUG FIX: Menggunakan dataset yang sudah di-scoring oleh Model Guru (Soft Labels)
     let dataset_path = "experiment/file_model/teacher_distillation_dataset_scored.json";
@@ -111,13 +141,14 @@ fn train_distil(tokenizer: BPETokenizer, vocab_size: usize, init: &serde_json::V
     } else {
         println!("  -> Melewati inisialisasi terkontrol karena d_model script ({}) berbeda dengan init_weights ({}).", d_model, init_d_model);
     }
-    embedder.set_use_attention(true);
+    embedder.set_use_attention(false);
 
     let num_pairs = 32;
     let steps_per_epoch = dataset.len() / num_pairs;
-    let num_epochs = 2; // Kembalikan ke 2 Epoch. 5 Epoch terlalu lama dan membuat SNN rusak!
+    let num_epochs = 10;
     let total_steps = steps_per_epoch * num_epochs;
     let mut step = 0;
+    let t_start = Instant::now();
     
     use rand::seq::SliceRandom;
     use rand::SeedableRng;
@@ -135,24 +166,22 @@ fn train_distil(tokenizer: BPETokenizer, vocab_size: usize, init: &serde_json::V
             batch_texts.push(pair.s1.clone()); batch_texts.push(pair.s2.clone());
             batch_targets.push(pair.score);
             if batch_targets.len() == num_pairs {
-                let base_lr = if use_init { 0.0005 } else { 0.01 };
+                let base_lr = 2.0;
                 let progress = step as f32 / total_steps as f32;
                 // LR Scheduler: Cosine Annealing (bertahan tinggi di awal, melambat drastis di akhir)
                 let lr = base_lr * (0.01 + 0.99 * (0.5 * (1.0 + (progress * std::f32::consts::PI).cos())));
                 embedder.set_learning_rate(lr);
                 
                 let texts: Vec<&str> = batch_texts.iter().map(|s| s.as_str()).collect();
-                // Menurunkan margin dari 0.2 ke 0.05 agar evaluasi error lebih ketat
-                embedder.train_step_distill(&texts, &batch_targets, 0.05);
+                // Menggunakan margin 0.5 sesuai hasil kalibrasi
+                embedder.train_step_distill(&texts, &batch_targets, 0.5);
                 
                 batch_texts.clear(); batch_targets.clear(); step += 1;
-                
-                if step % 500 == 0 || step == total_steps {
-                    println!("  Epoch {}/{} | Step {}/{} | LR: {:.5}", epoch + 1, num_epochs, step, total_steps, lr);
-                }
+                print_progress_bar(step, total_steps, t_start);
             }
         }
     }
+    println!();
     embedder
 }
 
@@ -201,7 +230,7 @@ fn main() {
     let vocab_size = tokenizer.vocab_size();
 
     // Ubah nilai d_model dan max_seq_length di sini
-    let d_model = 384; 
+    let d_model = 256; 
     let max_seq_length = 128;
 
     println!("Memuat bobot inisialisasi terkontrol dari {}...", init_path);

@@ -48,9 +48,9 @@ impl SpikingSelfAttention {
         let limit = (6.0 / (d_model as f32 * 2.0)).sqrt() * scale;
         
         for i in 0..kernel_q.len() {
-            kernel_q[i] = rng.gen_range(-limit..limit);
-            kernel_k[i] = rng.gen_range(-limit..limit);
-            kernel_v[i] = rng.gen_range(-limit..limit);
+            kernel_q[i] = 0.0;
+            kernel_k[i] = 0.0;
+            kernel_v[i] = 0.0;
         }
 
         let mut beta_qkv = vec![0.0; d_model];
@@ -208,7 +208,7 @@ impl SpikingSelfAttention {
         let inputs = self.last_inputs.as_ref().expect("Call forward() first!");
         let _batch_seq = inputs.len() / self.d_model;
         let batch_size = actual_lengths.len();
-        let lr = self.base.learning_rate;
+        let lr = self.base.learning_rate * 0.005;
         let clip_min = self.base.clip_min;
         let clip_max = self.base.clip_max;
 

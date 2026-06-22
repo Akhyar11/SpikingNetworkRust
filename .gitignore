@@ -26,3 +26,4 @@ iclr2026/*.out
 iclr2026/*.fls
 iclr2026/*.fdb_latexmk
 __pycache__/
+model_weights.json
