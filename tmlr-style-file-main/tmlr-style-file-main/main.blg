@@ -5,16 +5,16 @@ The style file: tmlr.bst
 Database file #1: iclr2026_conference.bib
 You've used 11 entries,
             2773 wiz_defined-function locations,
-            663 strings with 7306 characters,
-and the built_in function-call counts, 5864 in all, are:
-= -- 486
+            661 strings with 7308 characters,
+and the built_in function-call counts, 5850 in all, are:
+= -- 483
 > -- 461
 < -- 3
 + -- 155
 - -- 144
-* -- 517
-:= -- 933
-add.period$ -- 33
+* -- 515
+:= -- 930
+add.period$ -- 32
 call.type$ -- 11
 change.case$ -- 79
 chr.to.int$ -- 11
@@ -22,13 +22,13 @@ cite$ -- 22
 duplicate$ -- 233
 empty$ -- 404
 format.name$ -- 157
-if$ -- 1193
+if$ -- 1190
 int.to.chr$ -- 1
 int.to.str$ -- 1
 missing$ -- 10
-newline$ -- 63
+newline$ -- 62
 num.names$ -- 44
-pop$ -- 154
+pop$ -- 155
 preamble$ -- 1
 purify$ -- 68
 quote$ -- 0
@@ -43,4 +43,4 @@ type$ -- 121
 warning$ -- 0
 while$ -- 43
 width$ -- 0
-write$ -- 145
+write$ -- 143

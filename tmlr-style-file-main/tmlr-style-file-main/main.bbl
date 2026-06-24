@@ -5,6 +5,11 @@
   \providecommand{\doi}[1]{doi: #1}\else
   \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
 
+\bibitem[Authors(2026)]{coincidence2026}
+Anonymous Authors.
+\newblock Sparse coincidence-based semantic attention for spiking neural
+  sentence embedding (under review / details omitted for double-blind), 2026.
+
 \bibitem[Devlin et~al.(2018)Devlin, Chang, Lee, and Toutanova]{devlin2018bert}
 Jacob Devlin, Ming-Wei Chang, Kenton Lee, and Kristina Toutanova.
 \newblock Bert: Pre-training of deep bidirectional transformers for language
@@ -29,12 +34,6 @@ Yudong Li, Yunlin Lei, and Xu~Yang.
 \newblock Spikeformer: A novel architecture for training high-performance
   low-latency spiking neural network.
 \newblock \emph{arXiv preprint arXiv:2211.10686}, 2022.
-
-\bibitem[Muhammad(2026)]{coincidence2026}
-Akhyar Muhammad.
-\newblock Sparse coincidence-based semantic attention for spiking neural
-  sentence embedding, 2026.
-\newblock URL \url{https://doi.org/10.5281/zenodo.20743764}.
 
 \bibitem[Neftci et~al.(2019)Neftci, Mostafa, and Zenke]{neftci2019surrogate}
 Emre~O Neftci, Hesham Mostafa, and Friedemann Zenke.
