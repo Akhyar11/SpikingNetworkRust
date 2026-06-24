@@ -16,7 +16,7 @@ fn main() {
     let out_dir = "huggingface_export";
     fs::create_dir_all(out_dir).unwrap();
 
-    let vocab_path = "experiment/file_model/vocab.json";
+    let vocab_path = "experiment/file_model/vocab_multilingual.json";
     
     // Copy tokenizer
     fs::copy(vocab_path, format!("{}/tokenizer.json", out_dir)).unwrap_or_else(|_| 0);

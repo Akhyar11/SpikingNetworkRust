@@ -376,7 +376,7 @@ fn eval_all_datasets(embedder: &mut SpikingSentenceEmbedder, label: &str) -> (se
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 fn main() {
-    let vocab_path = "experiment/file_model/vocab.json";
+    let vocab_path = "experiment/file_model/vocab_multilingual.json";
     let output_path = "experiment/file_model/full_eval_controlled.json";
 
     println!("Memuat tokenizer...");

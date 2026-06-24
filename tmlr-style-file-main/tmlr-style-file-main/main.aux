@@ -1,0 +1,53 @@
+\relax 
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand\HyField@AuxAddToFields[1]{}
+\providecommand\HyField@AuxAddToCoFields[2]{}
+\citation{devlin2018bert}
+\citation{reimers2019sentence}
+\citation{vaswani2017attention}
+\citation{tay2022efficient}
+\citation{roy2019towards}
+\citation{li2022spikeformer,zhu2023spikegpt}
+\citation{coincidence2026}
+\citation{fang2023spikingjelly}
+\@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{1}{section.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {2}Methodology: Architectural Dynamics and BPTT}{2}{section.2}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Architectural flowchart contrasting the proposed minimalist Recurrent Pooler against the $\mathcal  {O}(L^2)$ Spike-Overlap Attention baseline. The Recurrent Pooler completely bypasses quadratic spatial routing, natively translating discrete token spikes into a continuous temporal embedding state.}}{2}{figure.1}\protected@file@percent }
+\newlabel{fig:architecture}{{1}{2}{Architectural flowchart contrasting the proposed minimalist Recurrent Pooler against the $\mathcal {O}(L^2)$ Spike-Overlap Attention baseline. The Recurrent Pooler completely bypasses quadratic spatial routing, natively translating discrete token spikes into a continuous temporal embedding state}{figure.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}Spike Encoding and Heterogeneous Dynamics}{3}{subsection.2.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}Ablation Baseline: Spike-Driven Spike-Overlap Attention}{3}{subsection.2.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.3}The Superior Recurrent Pooler (Proposed Architecture)}{3}{subsection.2.3}\protected@file@percent }
+\citation{neftci2019surrogate}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Detailed computational flow of the Spike-Overlap Attention mechanism at a single timestep.}}{4}{figure.2}\protected@file@percent }
+\newlabel{fig:attention_mech}{{2}{4}{Detailed computational flow of the Spike-Overlap Attention mechanism at a single timestep}{figure.2}{}}
+\citation{hinton2015distilling}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.4}Knowledge Distillation and Error Routing}{5}{subsection.2.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {3}Experimental Evaluation}{5}{section.3}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Internal computational flow of the purely recurrent Add-Only Pooler. Floating-point multiplications are completely eliminated.}}{6}{figure.3}\protected@file@percent }
+\newlabel{fig:pooler_mech}{{3}{6}{Internal computational flow of the purely recurrent Add-Only Pooler. Floating-point multiplications are completely eliminated}{figure.3}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Hardware Specifications for Training and Inference}}{6}{table.1}\protected@file@percent }
+\newlabel{tab:hardware_specs}{{1}{6}{Hardware Specifications for Training and Inference}{table.1}{}}
+\citation{coincidence2026}
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Comprehensive Evaluation: Dimensionality Scaling and Architectural Ablation}}{7}{table.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Phase 1: Dimensionality Scaling and the Teacher Bottleneck}{7}{subsection.3.1}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Dimensionality Saturation on Augmented Multilingual Data. It is important to note that the validation datasets evaluated here (Eval-Multi and All-STS-Teacher) reflect the augmented multilingual training distribution, which is distinct from the standard zero-shot STS benchmarks presented in Table 1.}}{7}{table.3}\protected@file@percent }
+\newlabel{tab:multilingual_saturation}{{3}{7}{Dimensionality Saturation on Augmented Multilingual Data. It is important to note that the validation datasets evaluated here (Eval-Multi and All-STS-Teacher) reflect the augmented multilingual training distribution, which is distinct from the standard zero-shot STS benchmarks presented in Table 1}{table.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Phase 2: Ablation of Spike-Driven Attention}{7}{subsection.3.2}\protected@file@percent }
+\bibdata{iclr2026_conference}
+\bibcite{devlin2018bert}{{1}{2018}{{Devlin et~al.}}{{Devlin, Chang, Lee, and Toutanova}}}
+\bibcite{fang2023spikingjelly}{{2}{2023}{{Fang et~al.}}{{Fang, Chen, Ding, Chen, Yu, Zhou, Timoth{\'e}e, Tian, et~al.}}}
+\bibcite{hinton2015distilling}{{3}{2015}{{Hinton et~al.}}{{Hinton, Vinyals, and Dean}}}
+\bibcite{li2022spikeformer}{{4}{2022}{{Li et~al.}}{{Li, Lei, and Yang}}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Phase 3: Generalization Across Semantic Benchmarks}{8}{subsection.3.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {4}Limitations}{8}{section.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {5}Conclusion}{8}{section.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {6}Code and Model Availability}{8}{section.6}\protected@file@percent }
+\bibcite{coincidence2026}{{5}{2026}{{Muhammad}}{{}}}
+\bibcite{neftci2019surrogate}{{6}{2019}{{Neftci et~al.}}{{Neftci, Mostafa, and Zenke}}}
+\bibcite{reimers2019sentence}{{7}{2019}{{Reimers \& Gurevych}}{{Reimers and Gurevych}}}
+\bibcite{roy2019towards}{{8}{2019}{{Roy et~al.}}{{Roy, Jaiswal, and Panda}}}
+\bibcite{tay2022efficient}{{9}{2022}{{Tay et~al.}}{{Tay, Dehghani, Bahri, and Metzler}}}
+\bibcite{vaswani2017attention}{{10}{2017}{{Vaswani et~al.}}{{Vaswani, Shazeer, Parmar, Uszkoreit, Jones, Gomez, Kaiser, and Polosukhin}}}
+\bibcite{zhu2023spikegpt}{{11}{2023}{{Zhu et~al.}}{{Zhu, Zhao, Zhang, Deng, Li, Duan, Cheng, et~al.}}}
+\bibstyle{tmlr}
+\gdef \@abspage@last{9}

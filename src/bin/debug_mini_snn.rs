@@ -43,7 +43,7 @@ fn main() {
     let (texts, targets) = load_dataset("experiment/file_model/teacher_distillation_dataset_scored.json", total_samples);
 
     // Load Tokenizer
-    let tokenizer = BPETokenizer::load("experiment/file_model/vocab.json");
+    let tokenizer = BPETokenizer::load("experiment/file_model/vocab_multilingual.json");
     
     // Tentukan max_seq_length dengan mengecek dataset
     let max_seq_length = texts.iter().map(|text| tokenizer.encode(&text.to_lowercase()).len()).max().unwrap_or(16);
@@ -61,7 +61,7 @@ fn main() {
     
     let mut config_att = config.clone();
     config_att.learning_rate = 2.0; // Boost LR for Attention to help it converge faster
-    let tokenizer2 = BPETokenizer::load("experiment/file_model/vocab.json");
+    let tokenizer2 = BPETokenizer::load("experiment/file_model/vocab_multilingual.json");
     let mut embedder_att = SpikingSentenceEmbedder::new(tokenizer2, vocab_size, config_att);
 
     // FIX: Set Pooler to be a TRUE Identity Integrator so exact continuous gradients are mathematically correct

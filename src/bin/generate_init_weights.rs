@@ -8,13 +8,13 @@ use std::fs::File;
 use std::io::Write;
 
 fn main() {
-    let vocab_path = "experiment/file_model/vocab.json";
-    let output_path = "experiment/file_model/init_weights.json";
+    let vocab_path = "experiment/file_model/vocab_multilingual.json";
+    let output_path = "experiment/file_model/init_weights_512.json";
 
-    // Gunakan d_model=256 yang dipakai di semua eksperimen.
+    // Gunakan d_model=512 yang dipakai di semua eksperimen.
     // max_seq_length di sini tidak mempengaruhi bentuk bobot,
     // hanya mempengaruhi ukuran buffer temporal (tidak disimpan).
-    let d_model = 256;
+    let d_model = 512;
     let max_seq_length = 128;
 
     println!("Memuat tokenizer...");

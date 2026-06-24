@@ -8,6 +8,7 @@ dataset/
 /experiment/file_model/saved_model_distil.json
 /experiment/file_model/saved_model.json
 /experiment/file_model/init_weights.json
+/experiment/file_model/init_weights_512.json
 
 */**/node_modules
 
@@ -18,6 +19,9 @@ huggingface_export/tokenizer.json
 
 # Trained specific weights
 /experiment/file_model/trained_weights.json
+/experiment/file_model/trained_weights_512.json
+/experiment/file_model/train_distil_only_results.json
+/experiment/file_model/train_distil_only_results_512.json
 
 # LaTeX Build Artifacts
 iclr2026/*.aux

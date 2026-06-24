@@ -186,7 +186,7 @@ fn evaluate(embedder: &mut SpikingSentenceEmbedder, eval_data: &[STSPair]) -> (f
 }
 
 fn main() {
-    let vocab_path = "experiment/file_model/vocab.json";
+    let vocab_path = "experiment/file_model/vocab_multilingual.json";
     let dataset_path = "experiment/file_model/teacher_distillation_dataset.json";
     let eval_path = "experiment/file_model/sts-b_valid.json";
     let init_path = "experiment/file_model/init_weights.json";

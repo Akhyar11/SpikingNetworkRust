@@ -9,10 +9,22 @@ use std::io::{BufReader, Write};
 use std::time::Instant;
 
 #[derive(Deserialize, Clone)]
-struct PairScored { s1: String, s2: String, score: f32 }
+struct PairScored { 
+    #[serde(alias = "text1", alias = "s1")]
+    s1: String, 
+    #[serde(alias = "text2", alias = "s2")]
+    s2: String, 
+    score: f32 
+}
 
 #[derive(Deserialize)]
-struct STSPair { sentence1: String, sentence2: String, score: f32 }
+struct STSPair {
+    #[serde(alias = "s1", alias = "text1")]
+    sentence1: String,
+    #[serde(alias = "s2", alias = "text2")]
+    sentence2: String,
+    score: f32
+}
 
 fn load_init(path: &str) -> serde_json::Value {
     let f = File::open(path)
@@ -130,9 +142,9 @@ fn print_progress_bar(step: usize, total_steps: usize, start_time: Instant) {
 
 fn train_distil(tokenizer: BPETokenizer, vocab_size: usize, init: &serde_json::Value, d_model: usize, use_init: bool, init_d_model: usize, max_seq_length: usize) -> SpikingSentenceEmbedder {
     // BUG FIX: Menggunakan dataset yang sudah di-scoring oleh Model Guru (Soft Labels)
-    let dataset_path = "experiment/file_model/teacher_distillation_dataset_scored.json";
+    let dataset_path = "dataset/dataset_augmented_5000_scored.json";
     println!("Memuat dataset dari {}...", dataset_path);
-    let f = File::open(dataset_path).expect("teacher_distillation_dataset.json tidak ditemukan");
+    let f = File::open(dataset_path).expect("dataset/dataset_augmented_5000_scored.json tidak ditemukan");
     let dataset: Vec<PairScored> = serde_json::from_reader(BufReader::new(f)).unwrap();
     let mut embedder = new_embedder(tokenizer, vocab_size, d_model, max_seq_length);
     if use_init {
@@ -187,7 +199,8 @@ fn train_distil(tokenizer: BPETokenizer, vocab_size: usize, init: &serde_json::V
 
 fn eval_all_datasets(embedder: &mut SpikingSentenceEmbedder) -> serde_json::Value {
     let datasets = vec![
-        ("All-STS-Teacher", "experiment/file_model/all_sts_teacher_scored.json"),
+        ("Eval-Multi", "dataset/dataset_augmented_eval_1000_scored.json"),
+        ("All-STS-Teacher", "experiment/file_model/teacher_distillation_dataset_synthetic_valid.json"),
     ];
     let mut results = serde_json::Map::new();
     println!("\n  [Evaluasi Knowledge Distillation]");
@@ -217,9 +230,9 @@ fn eval_all_datasets(embedder: &mut SpikingSentenceEmbedder) -> serde_json::Valu
 
 
 fn main() {
-    let vocab_path = "experiment/file_model/vocab.json";
-    let init_path  = "experiment/file_model/init_weights.json";
-    let output_path = "experiment/file_model/train_distil_only_results.json";
+    let vocab_path = "experiment/file_model/vocab_multilingual.json";
+    let init_path  = "experiment/file_model/init_weights_512.json";
+    let output_path = "experiment/file_model/train_distil_only_results_512.json";
 
     println!("=============================================================");
     println!(" PELATIHAN KNOWLEDGE DISTILLATION SAJA");
@@ -230,7 +243,7 @@ fn main() {
     let vocab_size = tokenizer.vocab_size();
 
     // Ubah nilai d_model dan max_seq_length di sini
-    let d_model = 256; 
+    let d_model = 512; 
     let max_seq_length = 128;
 
     println!("Memuat bobot inisialisasi terkontrol dari {}...", init_path);
@@ -284,7 +297,7 @@ fn main() {
     }
     trained_weights.insert("pooler".to_string(), json!(pooler_params));
 
-    let trained_weights_path = "experiment/file_model/trained_weights.json";
+    let trained_weights_path = "experiment/file_model/trained_weights_512.json";
     let mut fw = File::create(trained_weights_path).unwrap();
     fw.write_all(serde_json::to_string_pretty(&trained_weights).unwrap().as_bytes()).unwrap();
     println!("✓ Bobot model hasil training disimpan ke: {}", trained_weights_path);

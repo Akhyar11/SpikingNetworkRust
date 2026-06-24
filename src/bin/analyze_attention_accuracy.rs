@@ -93,7 +93,7 @@ fn main() {
         score: p.score,
     }).collect();
 
-    let tokenizer = BPETokenizer::load("experiment/file_model/vocab.json");
+    let tokenizer = BPETokenizer::load("experiment/file_model/vocab_multilingual.json");
     let vocab_size = tokenizer.vocab_size();
 
     let max_seq_length = train_data.iter().flat_map(|p| vec![p.s1.as_str(), p.s2.as_str()])

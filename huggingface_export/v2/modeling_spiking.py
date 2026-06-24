@@ -51,14 +51,25 @@ class SpikingSentenceEmbedder(PreTrainedModel):
         self.emb_threshold = nn.Parameter(torch.ones(self.d_model) * 0.5)
 
         # Hapus Spatial Attention secara keseluruhan (Sesuai Paper V2)
-        
+
         self.pooler_weights = nn.Parameter(torch.randn(self.d_model, self.d_model))
         self.pooler_bias = nn.Parameter(torch.zeros(self.d_model))
         self.pooler_beta = nn.Parameter(torch.ones(self.d_model) * config.beta)
         self.pooler_threshold = nn.Parameter(torch.ones(self.d_model) * 0.8)
-        
+
         # Load JSON weights if available
         self._load_from_json()
+
+        # Wajib: inisialisasi internal HF (all_tied_weights_keys, device_map, dll)
+        self.post_init()
+
+    def _zero_pad_token(self):
+        """
+        Rust encode.rs: pad_token_id=0 → set semua dimensi embedding ke -1.0
+        agar lookup PAD menghasilkan -1.0 (tidak akan spike karena threshold > 0).
+        """
+        with torch.no_grad():
+            self.embedding_weights.data[0] = -1.0
 
     def _load_from_json(self):
         # Look for model_weights.json in the same directory
@@ -66,12 +77,12 @@ class SpikingSentenceEmbedder(PreTrainedModel):
         weight_path = os.path.join(base_dir, "model_weights.json")
         if not os.path.exists(weight_path):
             weight_path = "model_weights.json"
-        
+
         if os.path.exists(weight_path):
             print(f"Loading Spiking Network weights from {weight_path}...")
             with open(weight_path, "r") as f:
                 data = json.load(f)
-                
+
             emb = data.get("embedding", {})
             if "weights" in emb:
                 w = torch.tensor(emb["weights"]).reshape(-1, self.d_model)
@@ -79,15 +90,18 @@ class SpikingSentenceEmbedder(PreTrainedModel):
                 self.embedding_weights.data[:v_size] = w[:v_size]
             if "beta" in emb: self.emb_beta.data = torch.tensor(emb["beta"])
             if "threshold" in emb: self.emb_threshold.data = torch.tensor(emb["threshold"])
-                
+
             # Skip attention weights entirely as they are not used in V2 Recurrent Pooler
-            
+
             pool = data.get("pooler", {})
             if "kernel" in pool: self.pooler_weights.data = torch.tensor(pool["kernel"]).reshape(self.d_model, self.d_model)
             if "bias" in pool: self.pooler_bias.data = torch.tensor(pool["bias"])
             if "beta" in pool: self.pooler_beta.data = torch.tensor(pool["beta"])
             if "threshold" in pool: self.pooler_threshold.data = torch.tensor(pool["threshold"])
             print("Successfully loaded SNN native weights into PyTorch (V2 - Attention Free)!")
+
+        # Force token 0 embedding to -1.0 (matches Rust zero_pad_token)
+        self._zero_pad_token()
 
     def forward(self, input_ids, attention_mask=None, **kwargs):
         batch_size, seq_len = input_ids.shape
@@ -127,10 +141,17 @@ class SpikingSentenceEmbedder(PreTrainedModel):
             if attention_mask is not None and t < seq_len:
                 mask_t = attention_mask[:, t].unsqueeze(-1).float()
                 final_embeddings += current_p * mask_t
+            elif attention_mask is None and t < seq_len:
+                # Tanpa attention_mask, asumsikan semua token valid (sama dengan Rust)
+                final_embeddings += current_p
                 
         # =====================================================================
-        # 3. L2 NORMALIZATION (METRIC SPACE)
+        # 3. Z-SCORE NORMALIZATION (MEAN-CENTER + UNIT VARIANCE)
+        # Match Rust encode.rs:92-108: (x - mean(x)) / std(x)
         # =====================================================================
-        final_embeddings = F.normalize(final_embeddings, p=2, dim=1)
+        mean = final_embeddings.mean(dim=-1, keepdim=True)          # μ
+        centered = final_embeddings - mean                          # x - μ
+        std = centered.pow(2).sum(dim=-1, keepdim=True).sqrt().clamp(min=1e-8)  # σ
+        final_embeddings = centered / std                           # (x - μ) / σ
         
         return final_embeddings

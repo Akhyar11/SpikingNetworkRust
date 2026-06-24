@@ -4,18 +4,23 @@
     "Knowledge Distillation": {
       "results": {
         "All-STS-Teacher": {
-          "ms_per_pair": 1.0821255229475102,
-          "n_pairs": 29720,
-          "pearson": 0.8031476736068726
+          "ms_per_pair": 1.315154936,
+          "n_pairs": 5000,
+          "pearson": 0.747759222984314
+        },
+        "Eval-Multi": {
+          "ms_per_pair": 1.1527679839661018,
+          "n_pairs": 59000,
+          "pearson": 0.7296585440635681
         },
         "_energy": {
-          "average_spikes_per_sentence": 2197.056796769852,
-          "energy_savings_ratio": 9.088522440274312,
-          "snn_sops_per_sentence": 1124893.0799461643,
+          "average_spikes_per_sentence": 2861.09771875,
+          "energy_savings_ratio": 6.979139464248682,
+          "snn_sops_per_sentence": 1464882.032,
           "transformer_macs_estimated": 10223616.0
         }
       },
-      "train_time_seconds": 1633.08790411
+      "train_time_seconds": 2275.176283314
     }
   },
   "init_weights_file": "experiment/file_model/init_weights.json"

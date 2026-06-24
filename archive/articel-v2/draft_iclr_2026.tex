@@ -249,7 +249,26 @@ This gradient is then injected directly into the temporal unrolling sequence via
 
 \section{Experimental Evaluation}
 
-The models are implemented in native Rust to guarantee deterministic execution, avoiding PyTorch simulation artifacts. We trained over 10 epochs on a custom synthetic distillation dataset using a base learning rate of $2.0$ with cosine annealing. For Knowledge Distillation, we construct this high-fidelity soft-label training dataset designed to map the continuous representation space of dense networks into the discrete binary domain. We extract over 250,000 synthetic sentence pairs from diverse textual corpora, maintaining strict separation to prevent data leakage with the constituent zero-shot evaluation benchmarks (STS-12 through STS-16, STS-B, and SICK-R). These pairs are passed through the pre-trained dense Transformer teacher model (\texttt{all-MiniLM-L6-v2}), which infers continuous dense vector embeddings for each sentence. We then calculate the Pearson Correlation between these dense vectors to generate absolute ground-truth correlation scores ranging from -1.0 to 1.0. The teacher model script and the dataset generation utilities are provided in the supplementary materials. Following training, the model is evaluated on the standard downstream tasks, where the aggregate ALL-STS score is calculated as a weighted average of Pearson correlations across these constituent benchmarks based on their respective sample sizes.
+\textbf{Hardware Specifications and Implementation:} All models are implemented entirely in native Rust to guarantee deterministic execution and avoid the simulation overhead typical of Python-based frameworks like PyTorch. To highlight the extreme computational efficiency of the proposed SNN architecture, all training and inference evaluations were executed exclusively on a standard consumer-grade laptop without any GPU acceleration. The detailed hardware specifications are provided in Table \ref{tab:hardware_specs}.
+
+\begin{table}[ht]
+\centering
+\caption{Hardware Specifications for Training and Inference}
+\begin{tabular}{ll}
+\toprule
+\textbf{Component} & \textbf{Specification} \\
+\midrule
+CPU Model & 11th Gen Intel Core i5-1135G7 \\
+Base Clock Speed & 2.40 GHz \\
+System Memory (RAM) & 16 GB \\
+Operating System & Linux (x86\_64) \\
+Hardware Accelerator & None (Pure CPU Execution) \\
+\bottomrule
+\end{tabular}
+\label{tab:hardware_specs}
+\end{table}
+
+\textbf{Training Protocol:} We trained over 10 epochs on a custom synthetic distillation dataset using a base learning rate of $2.0$ with cosine annealing. For Knowledge Distillation, we construct this high-fidelity soft-label training dataset designed to map the continuous representation space of dense networks into the discrete binary domain. We extract over 250,000 synthetic sentence pairs from diverse textual corpora, maintaining strict separation to prevent data leakage with the constituent zero-shot evaluation benchmarks (STS-12 through STS-16, STS-B, and SICK-R). These pairs are passed through the pre-trained dense Transformer teacher model (\texttt{all-MiniLM-L6-v2}), which infers continuous dense vector embeddings for each sentence. We then calculate the Pearson Correlation between these dense vectors to generate absolute ground-truth correlation scores ranging from -1.0 to 1.0. The teacher model script and the dataset generation utilities are provided in the supplementary materials. Following training, the model is evaluated on the standard downstream tasks, where the aggregate ALL-STS score is calculated as a weighted average of Pearson correlations across these constituent benchmarks based on their respective sample sizes.
 
 \begin{table}[ht]
 \centering
@@ -278,12 +297,26 @@ SICK-R & 0.4477 & 0.4865 & 0.4838 & 0.4745 & 0.4819 \\
 }
 \end{table}
 
-\subsection{Phase 1: Dimensionality Scaling}
-Using the Distillation strategy with the Recurrent Pooler, we scaled the embedding dimension $D_{model}$ to analyze representation capacity. 
+\subsection{Phase 1: Dimensionality Scaling and the Teacher Bottleneck}
+Using the Distillation strategy with the Recurrent Pooler, we scaled the embedding dimension $D_{model}$ to analyze representation capacity. The SNN scales impeccably up to 256 dimensions, shattering the 0.80 Pearson correlation barrier, which is a massive improvement over prior Spike Coincidence Attention baselines \citep{coincidence2026} ($r=0.758$). 
 
+\begin{table}[ht]
+\centering
+\caption{Dimensionality Saturation on Augmented Multilingual Data. It is important to note that the validation datasets evaluated here (Eval-Multi and All-STS-Teacher) reflect the augmented multilingual training distribution, which is distinct from the standard zero-shot STS benchmarks presented in Table 1.}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Metric} & \textbf{Recurrent ($D=256$)} & \textbf{Recurrent ($D=512$)} \\
+\midrule
+Eval-Multi (Pearson) & \textbf{0.7297} & 0.7233 \\
+All-STS-Teacher (Pearson) & \textbf{0.7478} & 0.7469 \\
+Inference Latency (ms/pair) & \textbf{1.15} & 1.91 \\
+Training Time (seconds) & \textbf{2,275} & 4,319 \\
+\bottomrule
+\end{tabular}
+\label{tab:multilingual_saturation}
+\end{table}
 
-
-The SNN scales impeccably to 256 dimensions, shattering the 0.80 Pearson correlation barrier, a massive improvement over prior Spike Coincidence Attention baselines \citep{coincidence2026} ($r=0.758$).
+However, we empirically observed a saturation point when scaling further to $D_{model} = 512$. As detailed in Table \ref{tab:multilingual_saturation}, in an expanded multilingual and synthetic typo-robustness evaluation, doubling the parameters from 256 to 512 resulted in a slight degradation of Pearson correlation (from 0.7297 to 0.7233 on Eval-Multi) while simultaneously nearly doubling the inference latency. We attribute this performance plateau to two primary factors: (1) \textbf{Teacher Bottleneck}: The dense teacher model projects continuous semantics into a $D=384$ space. Distilling this compressed knowledge into a larger $D=512$ discrete student architecture creates an inherent information bottleneck where the student possesses excess capacity without novel semantic signals to capture. (2) \textbf{Algorithmic Augmentation}: The synthetic negative sampling and typo perturbations utilized during training possess simple algorithmic properties. The $D=256$ recurrent pooler fully encapsulates these patterns, leaving the $D=512$ model highly susceptible to embedding space fragmentation and overfitting on hard negatives. Consequently, $D_{model} = 256$ serves as the optimal computational ``sweet spot'' for this specific SNN topology.
 
 \subsection{Phase 2: Ablation of Spike-Driven Attention}
 Fixing the dimension to $D_{model} = 256$, we performed an architectural ablation against the Spike-Overlap Attention and the minimalist Recurrent Pooler.
