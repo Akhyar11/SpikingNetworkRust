@@ -1,5 +1,14 @@
-\documentclass[10pt]{article} % For LaTeX2e
-\usepackage{tmlr}
+\documentclass[final]{clv2025}
+
+\jvol{vv}
+\jnum{nn}
+\jyear{2025}
+%There is no need for the authors to change the above.
+
+\dochead{Long Paper} 
+% Possible options: Long Paper, Short Paper, Survey, Survey Proposal, Position Paper, Last Words, Book Review, Dissertation Award, Lifetime Achievement Award, Squibs and Discussions, Featured Article
+
+\pageonefooter{Action editor: \{action editor name\}. Submission received: DD Month YYYY; revised version received: DD Month YYYY; accepted for publication: DD Month YYYY.}
 
 \input{math_commands.tex}
 
@@ -13,19 +22,18 @@
 \usepackage{tikz}
 \usetikzlibrary{shadows, arrows.meta, positioning, fit, backgrounds, shapes.geometric, arrows}
 
-\title{Is Spike-Driven Self-Attention Necessary? The Inefficiency\\ of Spike-Overlap Attention in Spiking\\ Sentence Embeddings}
-
-\author{\name Muhammad Akhyar \email akhyarsafrudin@gmail.com \\
-      \addr Independent Researcher}
-
-\newcommand{\fix}{\marginpar{FIX}}
-\newcommand{\new}{\marginpar{NEW}}
-
-\def\month{06}  
-\def\year{2026} 
-\def\openreview{\url{}} 
+\runningtitle{Inefficiency of Spike-Overlap Attention}
+\runningauthor{Akhyar}
 
 \begin{document}
+
+\title{Is Spike-Driven Self-Attention Necessary? The Inefficiency\\ of Spike-Overlap Attention in Spiking\\ Sentence Embeddings}
+
+\author{Muhammad Akhyar\thanks{Corresponding author}}
+
+\affilblock{
+    \affil{Independent Researcher\\\quad \email{akhyarsafrudin@gmail.com}}
+}
 
 \maketitle
 
@@ -40,18 +48,19 @@ The computational overhead of Dense Sentence Embedders \citep{devlin2018bert}, s
 In this study, we systematically deconstruct the forward dynamics and learning mechanisms of an SNN sentence embedder down to its core computational primitives. We mathematically define a Spike-Overlap-based Spiking Attention algorithm and contrast it against an attention-free Recurrent Pooler. Our empirical findings across a multi-phase evaluation indicate that the temporal integration capabilities of the recurrent pooler, when optimized via Backpropagation Through Time (BPTT) and Surrogate Gradients, are overwhelmingly sufficient for encoding semantic structures.
 
 \subsection*{Contributions}
-Our primary contributions in this study are as follows:
-\begin{enumerate}
-    \item We mathematically formulate Spike-Driven Spike-Overlap Attention for semantic sentence embedding and empirically evaluate its computational trade-offs.
-    \item We introduce Hyperpolarized Padding, an SNN-native sequence padding mechanism that forces padding tokens into a negative refractory state to prevent noise accumulation.
-    \item We introduce Add-Only Delta BPTT routing, significantly reducing floating-point matrix multiplications during the backward pass of the recurrent temporal pooler.
-    \item We demonstrate that our attention-free recurrent pooling architecture achieves comparable semantic fidelity to spatial attention while offering a $4\times$ reduction in training cost and a $2\times$ reduction in inference latency.
-\end{enumerate}
+Our primary contribution in this study is the proposal and rigorous evaluation of an \textbf{Attention-Free Recurrent Spiking Sentence Embedder}. By bypassing complex $\mathcal{O}(L^2)$ spatial routing mechanisms and relying exclusively on temporal Leaky Integrate-and-Fire (LIF) pooling optimized via Backpropagation Through Time (BPTT), we demonstrate that temporal integration is overwhelmingly sufficient for semantic encoding. This minimalist architecture achieves comparable semantic fidelity to spatial attention baselines while offering a $4\times$ reduction in training cost and a $2\times$ reduction in inference latency. 
+
+To support and evaluate this primary architecture, we implemented several supporting methodologies:
+\begin{itemize}
+    \item A mathematical formulation of Spike-Driven Spike-Overlap Attention, which serves purely as a comparative baseline to expose the computational bottlenecks of spatial routing in SNNs.
+    \item \textbf{Hyperpolarized Padding}, an SNN-native sequence padding mechanism that forces padding tokens into a negative refractory state to prevent noise accumulation.
+    \item \textbf{Add-Only Delta BPTT routing}, a gradient routing technique that simplifies computations and significantly reduces floating-point matrix multiplications during the backward pass.
+\end{itemize}
 
 \section{Methodology: Architectural Dynamics and BPTT}
 
-\begin{figure}[ht]
-\centering
+\begin{figure}[t!]
+\begin{center}
 \resizebox{0.95\textwidth}{!}{%
 \begin{tikzpicture}[
     font=\sffamily,
@@ -105,6 +114,7 @@ Our primary contributions in this study are as follows:
 
 \end{tikzpicture}%
 }
+\end{center}
 \caption{Architectural flowchart contrasting the proposed minimalist Recurrent Pooler against the $\mathcal{O}(L^2)$ Spike-Overlap Attention baseline. The Recurrent Pooler completely bypasses quadratic spatial routing, natively translating discrete token spikes into a continuous temporal embedding state.}
 \label{fig:architecture}
 \end{figure}
@@ -135,8 +145,8 @@ While this avoids continuous floating-point multiplications, calculating $\mathc
 \end{equation}
 Unlike traditional additive residual connections, this XOR integration acts as an ``innovation signal.'' It isolates the feature discrepancy between the local token representation and the global contextual attention. By neutralizing redundant spikes that are active in both the local embedding and global context, the subsequent recurrent pooler is forced to process strictly the novel semantic shifts introduced by the attention layer. This integration is explicitly applied in all our attention-based evaluations.
 
-\begin{figure}[ht]
-\centering
+\begin{figure}[t!]
+\begin{center}
 \resizebox{0.85\textwidth}{!}{%
 \begin{tikzpicture}[
     font=\sffamily,
@@ -185,6 +195,7 @@ Unlike traditional additive residual connections, this XOR integration acts as a
 
 \end{tikzpicture}%
 }
+\end{center}
 \caption{Detailed computational flow of the Spike-Overlap Attention mechanism at a single timestep.}
 \label{fig:attention_mech}
 \end{figure}
@@ -214,8 +225,8 @@ This explicit temporal unrolling allows the $\beta$ parameter to act as a natura
 \end{equation}
 This greatly reduces dense matrix multiplications in the forward and BPTT routing phases, rendering the spatial $\mathcal{O}(L^2)$ matrix completely unnecessary. To perfectly preserve the sequence representation at initialization before learning temporal dynamics, the pooler is initialized as an Identity Matrix with biases disabled. We use a rectangular surrogate window width of $w=1.0$.
 
-\begin{figure}[ht]
-\centering
+\begin{figure}[t!]
+\begin{center}
 \resizebox{0.75\textwidth}{!}{%
 \begin{tikzpicture}[
     font=\sffamily,
@@ -259,6 +270,7 @@ This greatly reduces dense matrix multiplications in the forward and BPTT routin
 
 \end{tikzpicture}%
 }
+\end{center}
 \caption{Internal computational flow of the purely recurrent Add-Only Pooler. Floating-point multiplications are completely eliminated.}
 \label{fig:pooler_mech}
 \end{figure}
@@ -280,9 +292,9 @@ This gradient is then injected directly into the temporal unrolling sequence via
 
 \textbf{Hardware Specifications and Implementation:} All models are implemented entirely in native Rust to guarantee deterministic execution and avoid the simulation overhead typical of Python-based frameworks like PyTorch. To highlight the extreme computational efficiency of the proposed SNN architecture, all training and inference evaluations were executed exclusively on a standard consumer-grade laptop without any GPU acceleration. The detailed hardware specifications are provided in Table \ref{tab:hardware_specs}.
 
-\begin{table}[ht]
-\centering
+\begin{table}[t!]
 \caption{Hardware Specifications for Training and Inference}
+\label{tab:hardware_specs}
 \begin{tabular}{ll}
 \toprule
 \textbf{Component} & \textbf{Specification} \\
@@ -294,13 +306,11 @@ Operating System & Linux (x86\_64) \\
 Hardware Accelerator & None (Pure CPU Execution) \\
 \bottomrule
 \end{tabular}
-\label{tab:hardware_specs}
 \end{table}
 
 \textbf{Training Protocol:} We trained over 10 epochs on a custom synthetic distillation dataset using a base learning rate of $2.0$ with cosine annealing. For Knowledge Distillation, we construct this high-fidelity soft-label training dataset designed to map the continuous representation space of dense networks into the discrete binary domain. We extract over 250,000 synthetic sentence pairs from diverse textual corpora, maintaining strict separation to prevent data leakage with the constituent zero-shot evaluation benchmarks (STS-12 through STS-16, STS-B, and SICK-R). These pairs are passed through the pre-trained dense Transformer teacher model (\texttt{all-MiniLM-L6-v2}), which infers continuous dense vector embeddings for each sentence. We then calculate the Pearson Correlation between these dense vectors to generate absolute ground-truth correlation scores ranging from -1.0 to 1.0. The teacher model script and the dataset generation utilities are provided in the supplementary materials. Following training, the model is evaluated on the standard downstream tasks, where the aggregate ALL-STS score is calculated as a weighted average of Pearson correlations across these constituent benchmarks based on their respective sample sizes.
 
-\begin{table}[ht]
-\centering
+\begin{table}[t!]
 \caption{Comprehensive Evaluation: Dimensionality Scaling and Architectural Ablation}
 \resizebox{\textwidth}{!}{%
 \begin{tabular}{lccccc}
@@ -329,9 +339,9 @@ SICK-R & 0.4477 & 0.4865 & 0.4838 & 0.4745 & 0.4819 \\
 \subsection{Phase 1: Dimensionality Scaling and the Teacher Bottleneck}
 Using the Distillation strategy with the Recurrent Pooler, we scaled the embedding dimension $D_{model}$ to analyze representation capacity. The SNN scales impeccably up to 256 dimensions, shattering the 0.80 Pearson correlation barrier, which is a massive improvement over prior Spike Coincidence Attention baselines \citep{coincidence2026} ($r=0.758$). 
 
-\begin{table}[ht]
-\centering
+\begin{table}[t!]
 \caption{Dimensionality Saturation on Augmented Multilingual Data. It is important to note that the validation datasets evaluated here (Eval-Multi and All-STS-Teacher) reflect the augmented multilingual training distribution, which is distinct from the standard zero-shot STS benchmarks presented in Table 1.}
+\label{tab:multilingual_saturation}
 \begin{tabular}{lcc}
 \toprule
 \textbf{Metric} & \textbf{Recurrent ($D=256$)} & \textbf{Recurrent ($D=512$)} \\
@@ -342,7 +352,6 @@ Inference Latency (ms/pair) & \textbf{1.15} & 1.91 \\
 Training Time (seconds) & \textbf{2,275} & 4,319 \\
 \bottomrule
 \end{tabular}
-\label{tab:multilingual_saturation}
 \end{table}
 
 However, we empirically observed a saturation point when scaling further to $D_{model} = 512$. As detailed in Table \ref{tab:multilingual_saturation}, in an expanded multilingual and synthetic typo-robustness evaluation, doubling the parameters from 256 to 512 resulted in a slight degradation of Pearson correlation (from 0.7297 to 0.7233 on Eval-Multi) while simultaneously nearly doubling the inference latency. We attribute this performance plateau to two primary factors: (1) \textbf{Teacher Bottleneck}: The dense teacher model projects continuous semantics into a $D=384$ space. Distilling this compressed knowledge into a larger $D=512$ discrete student architecture creates an inherent information bottleneck where the student possesses excess capacity without novel semantic signals to capture. (2) \textbf{Algorithmic Augmentation}: The synthetic negative sampling and typo perturbations utilized during training possess simple algorithmic properties. The $D=256$ recurrent pooler fully encapsulates these patterns, leaving the $D=512$ model highly susceptible to embedding space fragmentation and overfitting on hard negatives. Consequently, $D_{model} = 256$ serves as the optimal computational ``sweet spot'' for this specific SNN topology.
@@ -371,15 +380,13 @@ Through detailed mathematical formulation and rigorous low-level structural abla
 
 
 \section{Code and Model Availability}
-To facilitate reproducibility and open science, the fully trained versions of our Attention-Free Spiking Sentence Embedder ($d_{model} = 256$) have been publicly released. The model weights, PyTorch-compatible SNN architecture scripts, and configuration files are available online.
+To facilitate reproducibility and open science, the fully trained versions of our Attention-Free Spiking Sentence Embedder ($d_{model} = 256$) have been publicly released. The model weights, PyTorch-compatible SNN architecture scripts, and configuration files are available online on Hugging Face.
 \begin{itemize}
-    \item \textbf{Base Model}: Achieves the reported $r = 0.8030$ Pearson correlation on the STS benchmarks.
-    \item \textbf{Multilingual Model}: Extends the vocabulary to $64,000$ to support cross-lingual semantic search across 20+ languages.
+    \item \textbf{Base Model} (\url{https://huggingface.co/PulseNet-Labs/spiking-sentence-embedder-v2}): Achieves the reported $r = 0.8030$ Pearson correlation on the STS benchmarks.
+    \item \textbf{Multilingual Model} (\url{https://huggingface.co/PulseNet-Labs/spiking-sentence-embedder-multilingual-v1}): Extends the vocabulary to $64,000$ to support cross-lingual semantic search across 20+ languages.
 \end{itemize}
-\textit{Note: The direct URL links to the Hugging Face repository have been temporarily redacted to maintain anonymity during the double-blind review process. They will be fully restored in the camera-ready version.}
 
-
+\bibliographystyle{compling}
 \bibliography{main}
-\bibliographystyle{tmlr}
 
 \end{document}
