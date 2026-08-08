@@ -1,0 +1,155 @@
+{
+  "note": "Pearson/Spearman vs human gold labels. Mean-pooling + cosine. Teks apa adanya (cased). Latency batch1 diukur pada 500 pair STS-B.",
+  "models": {
+    "all-MiniLM-L6-v2 (fp32, teacher)": {
+      "STS-12": {
+        "n_pairs": 3108,
+        "pearson": 0.7068,
+        "spearman": 0.6423,
+        "ms_per_pair_batch64": 78.793
+      },
+      "STS-13": {
+        "n_pairs": 1500,
+        "pearson": 0.5873,
+        "spearman": 0.5622,
+        "ms_per_pair_batch64": 74.008
+      },
+      "STS-14": {
+        "n_pairs": 3750,
+        "pearson": 0.6679,
+        "spearman": 0.6069,
+        "ms_per_pair_batch64": 73.428
+      },
+      "STS-15": {
+        "n_pairs": 3000,
+        "pearson": 0.6582,
+        "spearman": 0.6361,
+        "ms_per_pair_batch64": 71.156
+      },
+      "STS-16": {
+        "n_pairs": 1186,
+        "pearson": 0.6052,
+        "spearman": 0.505,
+        "ms_per_pair_batch64": 71.677
+      },
+      "STS-B": {
+        "n_pairs": 1500,
+        "pearson": 0.8696,
+        "spearman": 0.8671,
+        "ms_per_pair_batch64": 71.121
+      },
+      "SICK-R": {
+        "n_pairs": 9927,
+        "pearson": 0.5569,
+        "spearman": 0.5879,
+        "ms_per_pair_batch64": 68.657
+      },
+      "ALL-STS-weighted": {
+        "total_pairs": 23971,
+        "pearson": 0.6302,
+        "spearman": 0.6157
+      },
+      "latency_ms_per_pair_batch1_STSB500": 98.336
+    },
+    "all-MiniLM-L6-v2 (int8 dynamic)": {
+      "STS-12": {
+        "n_pairs": 3108,
+        "pearson": 0.6977,
+        "spearman": 0.629,
+        "ms_per_pair_batch64": 38.841
+      },
+      "STS-13": {
+        "n_pairs": 1500,
+        "pearson": 0.5817,
+        "spearman": 0.5577,
+        "ms_per_pair_batch64": 38.592
+      },
+      "STS-14": {
+        "n_pairs": 3750,
+        "pearson": 0.6589,
+        "spearman": 0.5955,
+        "ms_per_pair_batch64": 39.369
+      },
+      "STS-15": {
+        "n_pairs": 3000,
+        "pearson": 0.658,
+        "spearman": 0.6349,
+        "ms_per_pair_batch64": 34.056
+      },
+      "STS-16": {
+        "n_pairs": 1186,
+        "pearson": 0.602,
+        "spearman": 0.4965,
+        "ms_per_pair_batch64": 35.253
+      },
+      "STS-B": {
+        "n_pairs": 1500,
+        "pearson": 0.8639,
+        "spearman": 0.8625,
+        "ms_per_pair_batch64": 32.342
+      },
+      "SICK-R": {
+        "n_pairs": 9927,
+        "pearson": 0.5465,
+        "spearman": 0.5738,
+        "ms_per_pair_batch64": 39.108
+      },
+      "ALL-STS-weighted": {
+        "total_pairs": 23971,
+        "pearson": 0.6225,
+        "spearman": 0.6052
+      },
+      "latency_ms_per_pair_batch1_STSB500": 66.47
+    },
+    "distilbert-base-nli-stsb-mean-tokens": {
+      "STS-12": {
+        "n_pairs": 3108,
+        "pearson": 0.773,
+        "spearman": 0.7308,
+        "ms_per_pair_batch64": 218.043
+      },
+      "STS-13": {
+        "n_pairs": 1500,
+        "pearson": 0.5956,
+        "spearman": 0.5835,
+        "ms_per_pair_batch64": 211.93
+      },
+      "STS-14": {
+        "n_pairs": 3750,
+        "pearson": 0.7285,
+        "spearman": 0.7322,
+        "ms_per_pair_batch64": 189.289
+      },
+      "STS-15": {
+        "n_pairs": 3000,
+        "pearson": 0.6853,
+        "spearman": 0.6656,
+        "ms_per_pair_batch64": 218.473
+      },
+      "STS-16": {
+        "n_pairs": 1186,
+        "pearson": 0.5599,
+        "spearman": 0.4759,
+        "ms_per_pair_batch64": 223.101
+      },
+      "STS-B": {
+        "n_pairs": 1500,
+        "pearson": 0.862,
+        "spearman": 0.8666,
+        "ms_per_pair_batch64": 222.6
+      },
+      "SICK-R": {
+        "n_pairs": 9927,
+        "pearson": 0.5658,
+        "spearman": 0.5931,
+        "ms_per_pair_batch64": 216.979
+      },
+      "ALL-STS-weighted": {
+        "total_pairs": 23971,
+        "pearson": 0.6532,
+        "spearman": 0.6525
+      },
+      "latency_ms_per_pair_batch1_STSB500": 239.261
+    }
+  }
+}

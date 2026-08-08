@@ -1,0 +1,69 @@
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{geometry}
+\geometry{letterpaper, margin=1.0in}
+\usepackage{hyperref}
+
+\begin{document}
+
+\thispagestyle{empty}
+
+\noindent \textbf{Date:} August 8, 2026 \\
+
+\noindent \textbf{To:} \\
+The Editorial Board \\
+\emph{Journal of Computer Science \& Technology (JCS\&T)} \\
+
+\noindent \textbf{Subject:} Submission of Manuscript entitled ``Delta BPTT: Efficient Add-Only Backpropagation Through Time for Spiking Sequence Representations'' \\
+
+\noindent Dear Editors, \\
+
+I am pleased to submit our original research manuscript entitled \textbf{``Delta BPTT: Efficient Add-Only Backpropagation Through Time for Spiking Sequence Representations''} for consideration for publication in the \emph{Journal of Computer Science \& Technology (JCS\&T)}. \\
+
+\noindent \textbf{1. Why this manuscript should be published in JCS\&T:} \\
+Spiking Neural Networks (SNNs) are gaining rapid interest as a low-power alternative to conventional Deep Neural Networks for edge AI and neuromorphic computing. However, while forward passes in SNNs achieve high event-driven sparsity, the backward pass during Backpropagation Through Time (BPTT) traditionally re-introduces dense floating-point Multiply-Accumulate (MAC) operations, creating a significant computational bottleneck during training. 
+
+In this manuscript, we present \textbf{Delta BPTT}, a novel Add-Only gradient routing algorithm that exploits forward spike events as binary gates to replace dense weight-gradient accumulation with sparse, conditional scalar additions. Our evaluation demonstrates that Delta BPTT eliminates dense MACs in weight updates ($67.2\%$ sparsity matching forward pass) and achieves $2.44\times$ faster training while maintaining strong empirical gradient alignment ($\cos(\nabla W_D, \nabla W_B) = 0.9982$) with Standard BPTT. Furthermore, we demonstrate linear $\mathcal{O}(L)$ sequence scaling over quadratic $\mathcal{O}(L^2)$ spatial attention. We believe these findings on green, energy-efficient AI align strongly with the computational algorithms and emerging technologies scope of JCS\&T. \\
+
+\noindent \textbf{2. Declarations and Policy Statements:}
+\begin{itemize}
+    \item \textbf{Originality Confirmation:} We confirm that this manuscript is an original work and is not a reworked version of a paper that has been published or submitted for publication elsewhere, nor does it contain preliminary data.
+    \item \textbf{Policy Compliance:} There are no issues relating to journal policies. All co-authors have reviewed and approved the manuscript for submission.
+    \item \textbf{Competing Interests:} The author declares no competing financial or personal interests.
+\end{itemize}
+
+\noindent \textbf{3. Suggested Potential Peer Reviewers:} \\
+In accordance with JCS\&T guidelines, we suggest the following 3 potential peer reviewers who possess relevant expertise in Spiking Neural Networks, BPTT, and Neuromorphic Computing, and have no conflict of interest:
+
+\begin{enumerate}
+    \item \textbf{Prof. Kaushik Roy} \\
+    \emph{Affiliation:} Department of Electrical and Computer Engineering, Purdue University, USA. \\
+    \emph{Institutional Email:} \texttt{kaushik@purdue.edu} \\
+    \emph{ORCID:} \url{https://orcid.org/0000-0002-6451-8453} \\
+    \emph{Expertise:} Neuromorphic Computing, Spiking Neural Networks, Energy-Efficient AI Hardware.
+
+    \item \textbf{Prof. Emre Neftci} \\
+    \emph{Affiliation:} Institute for Neuromorphic Software (PGI-15), Forschungszentrum Jülich \& RWTH Aachen University, Germany. \\
+    \emph{Institutional Email:} \texttt{e.neftci@fz-juelich.de} \\
+    \emph{ORCID:} \url{https://orcid.org/0000-0002-3642-4523} \\
+    \emph{Expertise:} Surrogate Gradient Learning, Spatiotemporal BPTT, Spiking Neural Networks.
+
+    \item \textbf{Prof. Giacomo Indiveri} \\
+    \emph{Affiliation:} Institute of Neuroinformatics, University of Zurich and ETH Zurich, Switzerland. \\
+    \emph{Institutional Email:} \texttt{giacomo@ini.uzh.ch} \\
+    \emph{ORCID:} \url{https://orcid.org/0000-0002-7109-1689} \\
+    \emph{Expertise:} Neuromorphic Cognitive Systems, Spiking Neural Network Learning Rules.
+\end{enumerate}
+
+\bigskip
+
+\noindent Thank you very much for your time and consideration of our manuscript. We look forward to hearing from you. \\
+
+\noindent Sincerely, \\
+
+\noindent \textbf{Muhammad Akhyar} \\
+Department of Computer Science \\
+E-mail: \texttt{akhyar@example.edu} \\
+ORCID: \url{https://orcid.org/0009-0001-3259-4996}
+
+\end{document}
