@@ -1,0 +1,126 @@
+{
+  "attention": {
+    "all_sts_weighted": {
+      "pearson_raw": 0.3994,
+      "pooled_pearson": 0.4307,
+      "pooled_spearman": 0.4355,
+      "spearman": 0.3966,
+      "total_pairs": 23971
+    },
+    "datasets": {
+      "SICK-R": {
+        "ms_per_pair": 15.62,
+        "n_pairs": 9927,
+        "pearson_clamped": 0.3885,
+        "pearson_raw": 0.3885,
+        "spearman": 0.3723
+      },
+      "STS-12": {
+        "ms_per_pair": 15.368,
+        "n_pairs": 3108,
+        "pearson_clamped": 0.4587,
+        "pearson_raw": 0.4587,
+        "spearman": 0.4475
+      },
+      "STS-13": {
+        "ms_per_pair": 17.639,
+        "n_pairs": 1500,
+        "pearson_clamped": 0.3606,
+        "pearson_raw": 0.3606,
+        "spearman": 0.3528
+      },
+      "STS-14": {
+        "ms_per_pair": 23.46,
+        "n_pairs": 3750,
+        "pearson_clamped": 0.3581,
+        "pearson_raw": 0.3581,
+        "spearman": 0.3713
+      },
+      "STS-15": {
+        "ms_per_pair": 18.747,
+        "n_pairs": 3000,
+        "pearson_clamped": 0.4138,
+        "pearson_raw": 0.4138,
+        "spearman": 0.4337
+      },
+      "STS-16": {
+        "ms_per_pair": 16.991,
+        "n_pairs": 1186,
+        "pearson_clamped": 0.2693,
+        "pearson_raw": 0.2693,
+        "spearman": 0.2657
+      },
+      "STS-B": {
+        "ms_per_pair": 17.571,
+        "n_pairs": 1500,
+        "pearson_clamped": 0.5654,
+        "pearson_raw": 0.5654,
+        "spearman": 0.5886
+      }
+    },
+    "use_attention": true
+  },
+  "note": "Pearson/Spearman vs human gold labels; lowercase input; cosine pada embedding z-score. pearson_clamped = pipeline paper (sim.max(0)).",
+  "recurrent": {
+    "all_sts_weighted": {
+      "pearson_raw": 0.3526,
+      "pooled_pearson": 0.3782,
+      "pooled_spearman": 0.3974,
+      "spearman": 0.3614,
+      "total_pairs": 23971
+    },
+    "datasets": {
+      "SICK-R": {
+        "ms_per_pair": 2.268,
+        "n_pairs": 9927,
+        "pearson_clamped": 0.3467,
+        "pearson_raw": 0.3467,
+        "spearman": 0.3417
+      },
+      "STS-12": {
+        "ms_per_pair": 2.712,
+        "n_pairs": 3108,
+        "pearson_clamped": 0.4301,
+        "pearson_raw": 0.4301,
+        "spearman": 0.4175
+      },
+      "STS-13": {
+        "ms_per_pair": 2.392,
+        "n_pairs": 1500,
+        "pearson_clamped": 0.3221,
+        "pearson_raw": 0.3221,
+        "spearman": 0.3245
+      },
+      "STS-14": {
+        "ms_per_pair": 2.479,
+        "n_pairs": 3750,
+        "pearson_clamped": 0.3335,
+        "pearson_raw": 0.3335,
+        "spearman": 0.3584
+      },
+      "STS-15": {
+        "ms_per_pair": 2.543,
+        "n_pairs": 3000,
+        "pearson_clamped": 0.3231,
+        "pearson_raw": 0.3231,
+        "spearman": 0.3649
+      },
+      "STS-16": {
+        "ms_per_pair": 2.722,
+        "n_pairs": 1186,
+        "pearson_clamped": 0.2084,
+        "pearson_raw": 0.2084,
+        "spearman": 0.2219
+      },
+      "STS-B": {
+        "ms_per_pair": 2.901,
+        "n_pairs": 1500,
+        "pearson_clamped": 0.4823,
+        "pearson_raw": 0.4823,
+        "spearman": 0.5242
+      }
+    },
+    "use_attention": false
+  },
+  "weights": "experiment/file_model/trained_weights.json"
+}

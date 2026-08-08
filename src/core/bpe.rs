@@ -83,16 +83,6 @@ impl BPETokenizer {
         token_ids
     }
 
-    pub fn encode_with_special(&self, text: &str) -> Vec<u32> {
-        let bos = *self.vocab.get(BOS_TOKEN).unwrap_or(&0);
-        let eos = *self.vocab.get(EOS_TOKEN).unwrap_or(&0);
-        
-        let mut ids = vec![bos];
-        ids.extend(self.encode(text));
-        ids.push(eos);
-        ids
-    }
-
     pub fn decode(&self, ids: &[u32]) -> String {
         let mut tokens = Vec::new();
         for &id in ids {
@@ -187,14 +177,6 @@ impl BPETokenizer {
 
     pub fn vocab_size(&self) -> usize {
         self.vocab.len()
-    }
-
-    pub fn pad_id(&self) -> u32 {
-        *self.vocab.get(PAD_TOKEN).unwrap_or(&0)
-    }
-
-    pub fn bos_id(&self) -> u32 {
-        *self.vocab.get(BOS_TOKEN).unwrap_or(&0)
     }
 
     pub fn clone_with_same_vocab(&self) -> Self {

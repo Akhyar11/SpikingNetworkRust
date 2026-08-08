@@ -9,4 +9,3 @@ pub mod lifStep;
 pub mod contrastiveHebbian;
 pub mod surrogate;
 pub mod delta;
-pub mod normalize;

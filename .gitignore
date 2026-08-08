@@ -30,4 +30,13 @@ iclr2026/*.out
 iclr2026/*.fls
 iclr2026/*.fdb_latexmk
 __pycache__/
+*.pyc
 model_weights.json
+
+# LaTeX Build Artifacts (global)
+*.aux
+*.log
+*.out
+*.blg
+*.synctex.gz
+.omo

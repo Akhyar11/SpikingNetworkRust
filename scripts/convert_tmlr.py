@@ -25,7 +25,7 @@ header = r"""\documentclass[10pt]{article} % For LaTeX2e
 
 \title{Is Spike-Driven Self-Attention Necessary? The Inefficiency\\ of Spike-Overlap Attention in Spiking\\ Sentence Embeddings}
 
-\author{\name Muhammad Akhyar \email akhyarsafrudin@gmail.com}
+\author{\name Anonymous \email anonymous@example.com}
 
 \newcommand{\fix}{\marginpar{FIX}}
 \newcommand{\new}{\marginpar{NEW}}

@@ -69,64 +69,6 @@ pub fn contrastiveHebbian(
 }
 
 #[allow(non_snake_case)]
-pub fn distillationHebbian(
-    spikes: &[f32],
-    err_data: &mut [f32],
-    num_pairs: usize,
-    sequence_length: usize,
-    d_model: usize,
-    margin: f32,
-    actual_lengths: &[usize],
-    target_scores: &[f32]
-) -> f32 {
-    let mut total_loss: f32 = 0.0;
-    
-    for i in 0..num_pairs {
-        let a_offset = (2 * i) * sequence_length * d_model;
-        let b_offset = (2 * i + 1) * sequence_length * d_model;
-        
-        let target_score = target_scores[i].clamp(0.0, 1.0);
-        
-        let a_len = actual_lengths[2 * i];
-        let b_len = actual_lengths[2 * i + 1];
-        let max_len = a_len.max(b_len);
-
-        for s in 0..sequence_length {
-            if s >= max_len { continue; }
-
-            for d in 0..d_model {
-                let idx_a = a_offset + s * d_model + d;
-                let idx_b = b_offset + s * d_model + d;
-
-                let a_s = spikes[idx_a];
-                let b_s = spikes[idx_b];
-
-                let shared_active = if (a_s > 0.0 && b_s > 0.0) || (a_s == 0.0 && b_s == 0.0) { 1.0 } else { 0.0 };
-                let error = target_score - shared_active;
-
-                if error > 0.0 {
-                    if a_s > 0.0 && b_s == 0.0 {
-                        err_data[idx_b] += error * margin;
-                        total_loss += error * margin;
-                    } else if a_s == 0.0 && b_s > 0.0 {
-                        err_data[idx_a] += error * margin;
-                        total_loss += error * margin;
-                    }
-                } else if error < 0.0 {
-                    if a_s > 0.0 && b_s > 0.0 {
-                        err_data[idx_a] += error * margin; 
-                        err_data[idx_b] += error * margin;
-                        total_loss += (-error) * margin;
-                    }
-                }
-            }
-        }
-    }
-
-    total_loss
-}
-
-#[allow(non_snake_case)]
 pub fn poolerDistillation(
     normalized_out: &[f32],
     err_data: &mut [f32],

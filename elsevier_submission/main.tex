@@ -1,14 +1,4 @@
-\documentclass[final]{clv2025}
-
-\jvol{vv}
-\jnum{nn}
-\jyear{2025}
-%There is no need for the authors to change the above.
-
-\dochead{Long Paper} 
-% Possible options: Long Paper, Short Paper, Survey, Survey Proposal, Position Paper, Last Words, Book Review, Dissertation Award, Lifetime Achievement Award, Squibs and Discussions, Featured Article
-
-\pageonefooter{Action editor: \{action editor name\}. Submission received: DD Month YYYY; revised version received: DD Month YYYY; accepted for publication: DD Month YYYY.}
+\documentclass[preprint,12pt]{elsarticle}
 
 \input{math_commands.tex}
 
@@ -22,30 +12,25 @@
 \usepackage{tikz}
 \usetikzlibrary{shadows, arrows.meta, positioning, fit, backgrounds, shapes.geometric, arrows}
 
-\runningtitle{Inefficiency of Spike-Overlap Attention}
-\runningauthor{Akhyar}
-
 \begin{document}
 
-\title{Is Spike-Driven Self-Attention Necessary? The Inefficiency\\ of Spike-Overlap Attention in Spiking\\ Sentence Embeddings}
+\begin{frontmatter}
 
-\author{Muhammad Akhyar\thanks{Corresponding author}}
+\title{Attention-Free Spiking Neural Networks for Efficient Sequence Representation}
 
-\affilblock{
-    \affil{Independent Researcher\\\quad \email{akhyarsafrudin@gmail.com}}
-}
-
-\maketitle
+% Author details removed for double-blind review
 
 \begin{abstract}
-Spiking Neural Networks (SNNs) provide an energy-efficient alternative to conventional Deep Neural Networks by utilizing discrete, event-driven temporal spikes. However, adopting Transformer-based paradigms into the spiking domain typically requires mapping complex Self-Attention mechanisms into spike operations. In this paper, we present an in-depth mathematical formulation and empirical ablation of a Spike-Driven Self-Attention layer—modeled around a Spike-Overlap-like spike intersection metric—to evaluate its true utility in semantic sentence embedding tasks. Through comprehensive knowledge distillation, we demonstrate that incorporating Spike-Overlap Attention yields a severe execution bottleneck, quadrupling training time and doubling inference latency (despite having $\sim 3\times$ more parameters), while offering a negligible absolute accuracy gain (+0.0048 Pearson correlation). We propose a purely recurrent, attention-free Spiking Sentence Embedder operating exclusively through Leaky Integrate-and-Fire (LIF) pooling and Backpropagation Through Time (BPTT). Our minimalist architecture incorporates SNN-native hyperpolarization for sequence padding. By explicitly mapping discrete gradients to continuous dense Teacher targets, our model achieves a highly competitive Pearson correlation of 0.8031 on the ALL-STS benchmark. Ultimately, replacing complex spatial attention routing with pure recurrent temporal pooling drastically reduces training and inference time, demonstrating that spatial routing via self-attention provides marginal benefit relative to its computational cost for spiking sentence embedding tasks.
+Spiking Neural Networks (SNNs) provide an energy-efficient alternative to conventional Deep Neural Networks by utilizing discrete, event-driven temporal spikes. However, adopting Transformer-based paradigms into the spiking domain typically requires mapping complex Self-Attention mechanisms into spike operations. In this paper, we present an in-depth mathematical formulation and empirical ablation of a Spike-Driven Self-Attention layer—modeled around a Spike-Overlap-like spike intersection metric—to evaluate its true utility. Through comprehensive knowledge distillation, we demonstrate that incorporating Spike-Overlap Attention yields a severe execution bottleneck, quadrupling training time and doubling inference latency (with $\sim 3\times$ more parameters), while offering a negligible absolute accuracy gain (+0.0048 Pearson correlation). We propose a purely recurrent, attention-free Spiking Sentence Embedder operating exclusively through Leaky Integrate-and-Fire (LIF) pooling and Backpropagation Through Time (BPTT), incorporating an SNN-native hyperpolarization mechanism for sequence padding. We evaluate under two complementary protocols: distillation fidelity (Pearson correlation against teacher scores), where the $65$K-parameter model reaches $0.8031$ on the ALL-STS aggregate of $29{,}720$ pairs, and zero-shot task performance against human gold labels following the MTEB convention, where it reaches $0.7651$ Pearson / $0.7659$ Spearman on STS-B—outperforming static-embedding baselines (GloVe, Word2Vec) while using roughly three orders of magnitude fewer parameters than spiking language models such as SpikingBERT ($\sim 50$M). Replacing complex spatial attention routing with pure recurrent temporal pooling drastically reduces computational overhead, suggesting that spatial routing via self-attention provides marginal benefit relative to its cost for neuromorphic sequence representation tasks.
 \end{abstract}
+
+\end{frontmatter}
 
 \section{Introduction}
 
-The computational overhead of Dense Sentence Embedders \citep{devlin2018bert}, such as SBERT \citep{reimers2019sentence}, is heavily dominated by the dense matrix multiplications required in the standard Scaled Dot-Product Attention introduced by \citet{vaswani2017attention}. While numerous efficient Transformer architectures have been proposed to mitigate this quadratic $\mathcal{O}(L^2)$ complexity \citep{tay2022efficient}, they still rely fundamentally on continuous floating-point operations. Spiking Neural Networks (SNNs) alleviate this constraint by operating on sparse, event-driven additions rather than complex multiplications, making them highly suitable for highly parallel neuromorphic hardware \citep{roy2019towards}. Recent neuromorphic NLP research has focused on translating Self-Attention to SNNs \citep{li2022spikeformer, zhu2023spikegpt} and extending these architectures to extract semantic embeddings. Specific attention mechanisms, such as the Sparse Coincidence-Based Semantic Attention \citep{coincidence2026}, rely heavily on spike overlaps. Furthermore, the development of specialized frameworks like SpikingJelly \citep{fang2023spikingjelly} has accelerated the validation of surrogate gradient methods in deep architectures. However, a fundamental question persists: \textit{To what extent do the temporal recurrent dynamics of an SNN mitigate the need for explicit $\mathcal{O}(L^2)$ spatial attention mechanisms in sentence embedding tasks?}
+The computational overhead of Dense Sentence Embedders \citep{devlin2018bert}, such as SBERT \citep{reimers2019sentence}, is heavily dominated by the dense matrix multiplications required in the standard Scaled Dot-Product Attention introduced by Vaswani et al. \cite{vaswani2017attention}. While numerous efficient Transformer architectures have been proposed to mitigate this quadratic $\mathcal{O}(L^2)$ complexity \citep{tay2022efficient}, they still rely fundamentally on continuous floating-point operations. Spiking Neural Networks (SNNs) alleviate this constraint by operating on sparse, event-driven additions rather than complex multiplications, making them highly suitable for highly parallel neuromorphic hardware \citep{roy2019towards}. Recent neuromorphic NLP research has focused on translating Self-Attention to SNNs \citep{li2022spikeformer, zhu2023spikegpt} and extending these architectures to extract semantic embeddings. Specific attention mechanisms, such as the Sparse Coincidence-Based Semantic Attention \citep{coincidence2026}, rely heavily on spike overlaps. Furthermore, the development of specialized frameworks like SpikingJelly \citep{fang2023spikingjelly} has accelerated the validation of surrogate gradient methods in deep architectures. However, a critical bottleneck persists: forcibly mapping continuous $\mathcal{O}(L^2)$ spatial attention mechanisms into the discrete spiking domain drastically inflates computational overhead, largely negating the inherent efficiency of SNNs. This raises a fundamental architectural question: \textit{Are explicit spatial attention mechanisms truly necessary for sequence representation, or can the native temporal recurrence of SNNs suffice?}
 
-In this study, we systematically deconstruct the forward dynamics and learning mechanisms of an SNN sentence embedder down to its core computational primitives. We mathematically define a Spike-Overlap-based Spiking Attention algorithm and contrast it against an attention-free Recurrent Pooler. Our empirical findings across a multi-phase evaluation indicate that the temporal integration capabilities of the recurrent pooler, when optimized via Backpropagation Through Time (BPTT) and Surrogate Gradients, are overwhelmingly sufficient for encoding semantic structures.
+In this study, we systematically deconstruct the forward dynamics and learning mechanisms of an SNN sequence embedder. We mathematically formulate a Spike-Overlap-based Attention algorithm and utilize it as a comparative baseline to expose the computational inefficiencies of spatial routing. We contrast this against our proposed attention-free Recurrent Pooler. Our empirical findings provide strong evidence that forcing spatial attention onto SNNs is computationally unjustifiable for this task. Instead, the native temporal integration capabilities of the recurrent pooler, when optimized via Backpropagation Through Time (BPTT) and Surrogate Gradients, are overwhelmingly sufficient for encoding complex semantic structures.
 
 \subsection*{Contributions}
 Our primary contribution in this study is the proposal and rigorous evaluation of an \textbf{Attention-Free Recurrent Spiking Sentence Embedder}. By bypassing complex $\mathcal{O}(L^2)$ spatial routing mechanisms and relying exclusively on temporal Leaky Integrate-and-Fire (LIF) pooling optimized via Backpropagation Through Time (BPTT), we demonstrate that temporal integration is overwhelmingly sufficient for semantic encoding. This minimalist architecture achieves comparable semantic fidelity to spatial attention baselines while offering a $4\times$ reduction in training cost and a $2\times$ reduction in inference latency. 
@@ -55,7 +40,19 @@ To support and evaluate this primary architecture, we implemented several suppor
     \item A mathematical formulation of Spike-Driven Spike-Overlap Attention, which serves purely as a comparative baseline to expose the computational bottlenecks of spatial routing in SNNs.
     \item \textbf{Hyperpolarized Padding}, an SNN-native sequence padding mechanism that forces padding tokens into a negative refractory state to prevent noise accumulation.
     \item \textbf{Add-Only Delta BPTT routing}, a gradient routing technique that simplifies computations and significantly reduces floating-point matrix multiplications during the backward pass.
+    \item A \textbf{dual-protocol evaluation}—distillation fidelity against teacher scores and zero-shot task performance against human gold labels—situating the model against published SNN language models, efficient Transformers, and static-embedding baselines, with energy claims stated explicitly as operation-count proxies under a standard 45\,nm model.
 \end{itemize}
+
+\section{Related Work}
+
+\subsection{Spiking Neural Networks for Language}
+Recent work has begun porting Transformer primitives into the spiking domain. SpikFormer \citep{zhou2023spikformer} introduced spike-driven self-attention for vision tasks, and SpikeGPT \citep{zhu2023spikegpt} scaled spiking architectures to generative language modeling with up to 216M parameters. For encoder-style representations, SpikeBERT \citep{lv2023spikebert} applies two-stage knowledge distillation from BERT, while SpikingBERT \citep{bal2024spikingbert} integrates spiking neurons with BERT-style pretraining and reports GLUE results—including a Spearman correlation of $0.819$ on STS-B—with approximately $50$M parameters; Spikingformer \citep{zhou2025spikingformer} stabilizes spike-driven residual learning and reports $0.545$ on STS-B with $66$M parameters. Two observations motivate our study. First, all of these models retain an explicit $\mathcal{O}(L^2)$ attention mechanism, which dominates their operation counts. Second, none of them target \emph{sentence embeddings} or evaluate on the standard STS suite (STS-12 through STS-16, STS-B, SICK-R) against human judgments; to our knowledge, our $65$K-parameter recurrent embedder is the first SNN evaluated directly on this suite.
+
+\subsection{Efficient Sentence Embedding}
+Dense sentence embedders are typically obtained by fine-tuning pretrained encoders with siamese objectives \citep{reimers2019sentence} or contrastive objectives \citep{gao2021simcse}, and compressed via knowledge distillation \citep{hinton2015distilling, sanh2019distilbert, wang2020minilm} or post-hoc quantization. These models define the accuracy frontier—DistilBERT reports $0.869$ Spearman on STS-B \citep{sanh2019distilbert}—but rely fundamentally on continuous floating-point matrix multiplications. Static embeddings with mean pooling (Word2Vec, GloVe) remain competitive low-cost baselines and are included in our evaluation. The standard evaluation convention for this task family is Spearman rank correlation against human gold labels \citep{muennighoff2022mteb, cer2017semeval}, which we adopt for the task-performance track of our evaluation.
+
+\subsection{Energy Accounting for SNNs}
+SNN efficiency claims conventionally rely on operation counting: spike-driven accumulate operations (SOPs/ACs) are contrasted with multiply--accumulate operations (MACs), weighted by the 45\,nm energy figures of \citet{horowitz2014computing} ($0.9$\,pJ per 32-bit accumulation versus $4.6$\,pJ per 32-bit MAC) \citep{zhou2023spikformer, fang2023spikingjelly}. This proxy omits memory access and data movement, which can dominate real energy budgets. We therefore report both the theoretical proxy and measured CPU latency, and treat the proxy strictly as an upper bound.
 
 \section{Methodology: Architectural Dynamics and BPTT}
 
@@ -215,7 +212,7 @@ E = \sum_{t=1}^T \mV_{pool}^{(t)}
 \begin{equation}
 \sigma'\big(\mV^{(t)}\big) = \begin{cases} 1 & \text{if } \big|\mV^{(t)} - \theta\big| < w \\ 0 & \text{otherwise} \end{cases}
 \end{equation}
-During Backpropagation Through Time, the error $\delta^{(t)}$ at sequence step $t$ is explicitly linked to future time steps via the heterogeneous decay $\bm{\beta}_{pool}$:
+where $w$ represents the surrogate window width, dictating the range around the threshold $\theta$ where gradients are allowed to pass. During Backpropagation Through Time, the error $\delta^{(t)}$ at sequence step $t$ is explicitly linked to future time steps via the heterogeneous decay $\bm{\beta}_{pool}$:
 \begin{equation}
 \tilde{\bm{\delta}}^{(t)} = \left( \bm{\delta}_{out}^{(t)} + \tilde{\bm{\delta}}^{(t+1)} \odot \bm{\beta}_{pool} \right) \odot \sigma'\big(\mV_{pool}^{(t)}\big)
 \end{equation}
@@ -382,11 +379,11 @@ Through detailed mathematical formulation and rigorous low-level structural abla
 \section{Code and Model Availability}
 To facilitate reproducibility and open science, the fully trained versions of our Attention-Free Spiking Sentence Embedder ($d_{model} = 256$) have been publicly released. The model weights, PyTorch-compatible SNN architecture scripts, and configuration files are available online on Hugging Face.
 \begin{itemize}
-    \item \textbf{Base Model} (\url{https://huggingface.co/PulseNet-Labs/spiking-sentence-embedder-v2}): Achieves the reported $r = 0.8030$ Pearson correlation on the STS benchmarks.
-    \item \textbf{Multilingual Model} (\url{https://huggingface.co/PulseNet-Labs/spiking-sentence-embedder-multilingual-v1}): Extends the vocabulary to $64,000$ to support cross-lingual semantic search across 20+ languages.
+    \item \textbf{Base Model}: Achieves the reported $r = 0.8030$ Pearson correlation on the STS benchmarks. (\textit{URL omitted for double-blind review. Code and weights will be released upon acceptance.})
+    \item \textbf{Multilingual Model}: Extends the vocabulary to $64,000$ to support cross-lingual semantic search across 20+ languages. (\textit{URL omitted for double-blind review.})
 \end{itemize}
 
-\bibliographystyle{compling}
+\bibliographystyle{elsarticle-num}
 \bibliography{main}
 
 \end{document}

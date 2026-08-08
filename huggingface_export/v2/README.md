@@ -99,6 +99,6 @@ print(f"Semantic Similarity: {similarity.item():.4f}")
 
 ## Citing & Authors
 If you use this model in your research, please refer to the corresponding ICLR 2026 manuscript:
-*"Is Spike-Driven Self-Attention Necessary? The Inefficiency of Spike-Overlap Attention in Spiking Sentence Embeddings"* by **Muhammad Akhyar**.
+*"Is Spike-Driven Self-Attention Necessary? The Inefficiency of Spike-Overlap Attention in Spiking Sentence Embeddings"* by **Anonymous Author**.
 
-**Organization:** [PulseNet-Labs](https://huggingface.co/PulseNet-Labs)
+**Organization:** [Anonymous-Labs](https://huggingface.co/Anonymous-Labs)

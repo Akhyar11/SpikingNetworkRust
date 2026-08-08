@@ -1,0 +1,60 @@
+\begin{thebibliography}{10}
+\expandafter\ifx\csname url\endcsname\relax
+  \def\url#1{\texttt{#1}}\fi
+\expandafter\ifx\csname urlprefix\endcsname\relax\def\urlprefix{URL }\fi
+\expandafter\ifx\csname href\endcsname\relax
+  \def\href#1#2{#2} \def\path#1{#1}\fi
+
+\bibitem{devlin2018bert}
+J.~Devlin, M.-W. Chang, K.~Lee, K.~Toutanova, Bert: Pre-training of deep
+  bidirectional transformers for language understanding, arXiv preprint
+  arXiv:1810.04805 (2018).
+
+\bibitem{reimers2019sentence}
+N.~Reimers, I.~Gurevych, Sentence-bert: Sentence embeddings using siamese
+  bert-networks, in: Proceedings of the 2019 Conference on Empirical Methods in
+  Natural Language Processing and the 9th International Joint Conference on
+  Natural Language Processing (EMNLP-IJCNLP), 2019, pp. 3982--3992.
+
+\bibitem{vaswani2017attention}
+A.~Vaswani, N.~Shazeer, N.~Parmar, J.~Uszkoreit, L.~Jones, A.~N. Gomez,
+  {\L}.~Kaiser, I.~Polosukhin, Attention is all you need, Advances in neural
+  information processing systems 30 (2017).
+
+\bibitem{tay2022efficient}
+Y.~Tay, M.~Dehghani, D.~Bahri, D.~Metzler, Efficient transformers: A survey,
+  ACM Computing Surveys (CSUR) 55~(6) (2022) 1--28.
+
+\bibitem{roy2019towards}
+K.~Roy, A.~Jaiswal, P.~Panda, Towards spike-based machine intelligence with
+  neuromorphic computing, Nature 575~(7784) (2019) 607--617.
+
+\bibitem{li2022spikeformer}
+Y.~Li, Y.~Lei, X.~Yang, Spikeformer: A novel architecture for training
+  high-performance low-latency spiking neural network, arXiv preprint
+  arXiv:2211.10686 (2022).
+
+\bibitem{zhu2023spikegpt}
+R.-J. Zhu, Q.~Zhao, G.~Zhang, P.~Deng, H.~Li, Y.~Duan, X.~Cheng, et~al.,
+  Spikegpt: Generative pre-trained language model with spiking neural networks,
+  arXiv preprint arXiv:2302.13939 (2023).
+
+\bibitem{coincidence2026}
+Anonymous, Details omitted for double-blind reviewing, uRL omitted for
+  double-blind review (2026).
+
+\bibitem{fang2023spikingjelly}
+W.~Fang, Y.~Chen, J.~Ding, D.~Chen, Z.~Yu, H.~Zhou, M.~Timoth{\'e}e, Y.~Tian,
+  et~al., Spikingjelly: An open-source machine learning infrastructure platform
+  for spike-based intelligence, Science Advances 9~(40) (2023) eadi1480.
+
+\bibitem{neftci2019surrogate}
+E.~O. Neftci, H.~Mostafa, F.~Zenke, Surrogate gradient learning in spiking
+  neural networks: Bringing the power of gradient-based optimization to spiking
+  neural networks, IEEE Signal Processing Magazine 36~(6) (2019) 51--63.
+
+\bibitem{hinton2015distilling}
+G.~Hinton, O.~Vinyals, J.~Dean, Distilling the knowledge in a neural network,
+  arXiv preprint arXiv:1503.02531 (2015).
+
+\end{thebibliography}

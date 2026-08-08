@@ -1,0 +1,66 @@
+{
+  "attention": null,
+  "note": "Pearson/Spearman vs human gold labels; lowercase input; cosine pada embedding z-score. pearson_clamped = pipeline paper (sim.max(0)).",
+  "recurrent": {
+    "all_sts_weighted": {
+      "pearson_raw": 0.5038,
+      "pooled_pearson": 0.5024,
+      "pooled_spearman": 0.497,
+      "spearman": 0.4788,
+      "total_pairs": 23971
+    },
+    "datasets": {
+      "SICK-R": {
+        "ms_per_pair": 4.588,
+        "n_pairs": 9927,
+        "pearson_clamped": 0.4745,
+        "pearson_raw": 0.4725,
+        "spearman": 0.4594
+      },
+      "STS-12": {
+        "ms_per_pair": 7.537,
+        "n_pairs": 3108,
+        "pearson_clamped": 0.5343,
+        "pearson_raw": 0.5345,
+        "spearman": 0.4548
+      },
+      "STS-13": {
+        "ms_per_pair": 6.241,
+        "n_pairs": 1500,
+        "pearson_clamped": 0.4472,
+        "pearson_raw": 0.4472,
+        "spearman": 0.4373
+      },
+      "STS-14": {
+        "ms_per_pair": 6.146,
+        "n_pairs": 3750,
+        "pearson_clamped": 0.5083,
+        "pearson_raw": 0.5082,
+        "spearman": 0.478
+      },
+      "STS-15": {
+        "ms_per_pair": 5.272,
+        "n_pairs": 3000,
+        "pearson_clamped": 0.5228,
+        "pearson_raw": 0.5226,
+        "spearman": 0.5142
+      },
+      "STS-16": {
+        "ms_per_pair": 5.635,
+        "n_pairs": 1186,
+        "pearson_clamped": 0.3647,
+        "pearson_raw": 0.3649,
+        "spearman": 0.3063
+      },
+      "STS-B": {
+        "ms_per_pair": 6.455,
+        "n_pairs": 1500,
+        "pearson_clamped": 0.7651,
+        "pearson_raw": 0.765,
+        "spearman": 0.7659
+      }
+    },
+    "use_attention": false
+  },
+  "weights": "huggingface_export/v2/model_weights.json"
+}
