@@ -1,0 +1,410 @@
+RESEARCH #2 — ADAPTIVE TEMPORAL COMPUTATION IN SPIKING NEURAL NETWORKS
+
+1. WORKING TITLE
+
+Learning When to Stop: Adaptive Temporal Computation for Efficient Spiking Neural Networks
+
+Catatan:
+- Judul masih sementara.
+- Judul final ditentukan setelah novelty dan hasil eksperimen jelas.
+
+
+2. RESEARCH MOTIVATION
+
+Conventional SNN inference commonly uses a fixed number of timesteps for every input.
+
+Hal ini dapat menyebabkan computation yang tidak diperlukan untuk input yang sebenarnya sudah dapat menghasilkan prediksi yang cukup baik dengan timestep lebih sedikit.
+
+Research ini ingin mengetahui apakah SNN dapat belajar menentukan sendiri berapa banyak temporal computation yang diperlukan oleh setiap input.
+
+
+3. CORE RESEARCH PROBLEM
+
+Pertanyaan utama:
+
+Can a Spiking Neural Network learn to dynamically determine how much temporal computation an input requires?
+
+Formulasi awal:
+
+T(x) <= T_max
+
+Keterangan:
+- x = input
+- T(x) = jumlah timestep yang digunakan untuk input x
+- T_max = jumlah timestep maksimum
+
+
+4. PRIMARY RESEARCH QUESTION
+
+RQ1:
+
+Can an SNN learn to dynamically allocate temporal computation according to the information requirements of individual inputs?
+
+
+5. SECONDARY RESEARCH QUESTIONS
+
+RQ2:
+Does the learned computation allocation correlate with input difficulty?
+
+RQ3:
+Can adaptive temporal computation reduce average computational cost while maintaining comparable task performance?
+
+RQ4:
+What is the trade-off between computational budget and task performance?
+
+
+6. CORE CONCEPT
+
+Fixed SNN:
+
+Input
+  ->
+SNN with T_max timesteps
+  ->
+Output
+
+
+Adaptive SNN:
+
+Input
+  ->
+SNN
+  ->
+Check whether sufficient information has been accumulated
+  ->
+If insufficient: continue
+  ->
+If sufficient: halt
+  ->
+Output
+
+
+Target relationship:
+
+Input Difficulty
+        |
+        v
+Required Temporal Computation
+
+
+Expected behavior:
+
+D(x) increases
+    =>
+T(x) increases
+
+
+7. INITIAL MATHEMATICAL IDEA
+
+The model should dynamically determine:
+
+T(x) <= T_max
+
+Potential halting probability:
+
+p_t = sigmoid(W_h h_t + b_h)
+
+where:
+- h_t = hidden state at timestep t
+- p_t = probability of halting at timestep t
+
+Potential halting rule:
+
+T(x) = min { t : p_t > tau }
+
+Catatan:
+- Formula ini masih berupa initial idea.
+- Metode halting final belum ditentukan.
+- Threshold tau belum ditentukan.
+
+
+8. MAIN NOVELTY — HYPOTHESIS
+
+Potential novelty:
+
+A learned temporal halting mechanism that allows an SNN to dynamically determine the amount of computation required for each input.
+
+Catatan penting:
+- Ini BELUM boleh dianggap sebagai proven contribution.
+- Novelty harus diverifikasi melalui literature review.
+- Novelty baru dapat diklaim setelah eksperimen dan perbandingan dengan metode sebelumnya.
+
+
+9. WHAT THIS RESEARCH IS NOT
+
+Research ini tidak bertujuan untuk:
+
+- Sekadar membuat early-exit dengan threshold hardcoded.
+- Sekadar menunjukkan bahwa SNN lebih cepat.
+- Menjadikan Delta BPTT sebagai novelty utama.
+- Langsung menggabungkan SNN + LLM + ARC + memory + multimodal.
+- Membuat klaim bahwa SNN melakukan human-like reasoning.
+
+
+10. RELATIONSHIP WITH RESEARCH #1
+
+Research #1 — Delta BPTT
+
+Focus:
+Training Efficiency
+
+Main question:
+How can SNN gradients be computed more efficiently?
+
+
+Research #2 — Adaptive Temporal Computation
+
+Focus:
+Inference Efficiency
+
+Main question:
+How can an SNN learn how much temporal computation an input requires?
+
+
+Relationship:
+
+Research #1:
+Efficient Training
+        |
+        v
+Delta BPTT
+
+
+Research #2:
+Adaptive Inference
+        |
+        v
+Learned Temporal Halting
+
+
+Catatan:
+Delta BPTT boleh digunakan dalam Research #2 sebagai training method atau baseline, tetapi bukan novelty utama.
+
+
+11. INITIAL BASELINES
+
+Minimal comparison:
+
+1. Fixed SNN + Standard BPTT
+2. Fixed SNN + Delta BPTT
+3. Adaptive SNN + Standard BPTT
+4. Adaptive SNN + Delta BPTT
+
+Tujuan:
+Memisahkan kontribusi Adaptive Temporal Computation dari kontribusi Delta BPTT.
+
+
+12. INITIAL EVALUATION METRICS
+
+Metrics yang kemungkinan akan digunakan:
+
+- Task performance / Accuracy
+- Average timestep
+- Timestep distribution
+- Spike count
+- AC operations
+- MAC operations, jika relevan
+- Inference latency
+- Memory usage, jika memungkinkan
+- Computation-performance trade-off
+
+
+13. INITIAL EXPERIMENTAL COMPARISON
+
+Fixed SNN:
+
+T = T_max
+
+
+Adaptive SNN:
+
+T(x) <= T_max
+
+
+Target:
+
+Accuracy_adaptive approximately equal to Accuracy_fixed
+
+sementara:
+
+E[T(x)] < T_max
+
+
+Catatan:
+- Belum menentukan toleransi penurunan accuracy.
+- Belum menentukan target pengurangan computation.
+- Target numerik ditentukan setelah baseline dan literature review.
+
+
+14. DIFFICULTY
+
+Konsep difficulty sangat penting dalam research ini.
+
+Pertanyaan:
+
+Apakah model benar-benar menggunakan lebih banyak computation untuk input yang lebih sulit?
+
+Expected relationship:
+
+Difficulty increases
+    =>
+Required temporal computation increases
+
+
+Dua pendekatan awal:
+
+A. Controlled difficulty
+- Difficulty dibuat/dikontrol melalui dataset.
+- Contoh: difficulty level 1, 2, 3, 4, 5.
+
+B. Learned/implicit difficulty
+- Difficulty tidak diberikan kepada model.
+- Model menentukan kapan harus berhenti berdasarkan state/confidence.
+- Setelah eksperimen, dianalisis apakah timestep yang dipilih berkorelasi dengan difficulty.
+
+Hipotesis awal:
+Pendekatan B lebih menarik sebagai mekanisme utama.
+Pendekatan A dapat digunakan sebagai controlled experiment.
+
+
+15. POTENTIAL DATASET DIRECTION
+
+Belum menentukan dataset final.
+
+Arah awal:
+- Synthetic reasoning task
+- ARC-like task
+- Sequence reasoning task
+
+Alasan:
+Dataset dengan difficulty yang dapat dikontrol memungkinkan pengujian hubungan:
+
+Difficulty
+    ->
+Temporal computation
+    ->
+Performance
+
+
+16. IMPORTANT FIGURE IDEA
+
+Salah satu target visualisasi:
+
+Difficulty vs Average Timestep
+
+Expected pattern:
+
+Difficulty 1 -> few timesteps
+Difficulty 2 -> more timesteps
+Difficulty 3 -> more timesteps
+...
+Difficulty N -> many timesteps
+
+
+Another important figure:
+
+Computation vs Performance
+
+Tujuan:
+Menunjukkan trade-off antara jumlah computation dan task performance.
+
+
+17. INITIAL LOSS IDEA
+
+Potential objective:
+
+L = L_task + lambda * T(x) / T_max
+
+Interpretasi:
+
+L_task
+=
+model harus menyelesaikan task dengan benar.
+
+lambda * T(x) / T_max
+=
+memberikan tekanan agar model menggunakan computation sesedikit mungkin.
+
+Catatan:
+- Ini masih initial formulation.
+- Belum diputuskan apakah formulation ini merupakan metode terbaik.
+- Perlu dibandingkan dengan metode adaptive computation/halting yang sudah ada.
+
+
+18. CURRENT RESEARCH DIRECTION
+
+Primary direction:
+
+Adaptive Temporal Computation / Learned Halting in SNN.
+
+
+19. CURRENT RESEARCH QUESTION
+
+Primary RQ:
+
+Can an SNN learn to dynamically determine how much temporal computation an input requires?
+
+
+Secondary RQs:
+
+1. Does the learned computation allocation correlate with input difficulty?
+2. Can adaptive computation reduce average computation while maintaining task performance?
+3. What is the trade-off between computation and performance?
+
+
+20. THINGS NOT DECIDED YET
+
+Belum menentukan:
+
+- Final title
+- Final architecture
+- Final dataset
+- Final task
+- Halting mechanism
+- Threshold tau
+- Lambda
+- Maximum timestep
+- Minimum timestep
+- Spike encoding
+- Exact loss function
+- Evaluation protocol
+- Target accuracy
+- Target computation reduction
+- Final baseline models
+- Final journal
+
+
+21. NEXT STEP
+
+STEP 2:
+
+Formulate falsifiable hypotheses.
+
+Target:
+
+H1 — Adaptive computation hypothesis
+H2 — Difficulty-computation correlation hypothesis
+H3 — Efficiency-performance hypothesis
+
+Setiap hipotesis harus memiliki:
+- Pernyataan yang jelas
+- Variabel yang diukur
+- Eksperimen untuk menguji
+- Kondisi berhasil
+- Kondisi gagal
+
+
+22. CURRENT STATUS
+
+Research #2 masih berada pada tahap:
+
+STEP 1 — RESEARCH QUESTION DEFINITION
+
+Belum masuk:
+- Literature review mendalam
+- Mathematical finalization
+- Architecture design
+- Coding
+- Training
+- Experiment
+- Paper writing

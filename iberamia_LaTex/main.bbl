@@ -1,0 +1,133 @@
+\begin{thebibliography}{10}
+
+\bibitem{coincidence2026}
+Anonymous.
+\newblock Details omitted for double-blind reviewing, 2026.
+\newblock URL omitted for double-blind review.
+
+\bibitem{bal2024spikingbert}
+Malyaban Bal and Abhronil Sengupta.
+\newblock Spikingbert: Distilling bert to train spiking language models using
+  implicit differentiation.
+\newblock {\em Proceedings of the AAAI Conference on Artificial Intelligence},
+  38(10):10998--11006, 2024.
+
+\bibitem{cer2017semeval}
+Daniel Cer, Mona Diab, Eneko Agirre, I{\~n}igo Lopez-Gazpio, and Lucia Specia.
+\newblock Semeval-2017 task 1: Semantic textual similarity multilingual and
+  crosslingual focused evaluation.
+\newblock In {\em Proceedings of the 11th International Workshop on Semantic
+  Evaluation (SemEval-2017)}, pages 1--14, 2017.
+
+\bibitem{devlin2018bert}
+Jacob Devlin, Ming-Wei Chang, Kenton Lee, and Kristina Toutanova.
+\newblock Bert: Pre-training of deep bidirectional transformers for language
+  understanding.
+\newblock {\em arXiv preprint arXiv:1810.04805}, 2018.
+
+\bibitem{fang2023spikingjelly}
+Wei Fang, Yanqi Chen, Jianhao Ding, Ding Chen, Zhaofei Yu, Huihui Zhou,
+  Masquelier Timoth{\'e}e, Yonghong Tian, et~al.
+\newblock Spikingjelly: An open-source machine learning infrastructure platform
+  for spike-based intelligence.
+\newblock {\em Science Advances}, 9(40):eadi1480, 2023.
+
+\bibitem{gao2021simcse}
+Tianyu Gao, Xingcheng Yao, and Danqi Chen.
+\newblock Simcse: Simple contrastive learning of sentence embeddings.
+\newblock In {\em Proceedings of the 2021 Conference on Empirical Methods in
+  Natural Language Processing}, pages 6894--6910, 2021.
+
+\bibitem{hinton2015distilling}
+Geoffrey Hinton, Oriol Vinyals, and Jeff Dean.
+\newblock Distilling the knowledge in a neural network.
+\newblock {\em arXiv preprint arXiv:1503.02531}, 2015.
+
+\bibitem{horowitz2014computing}
+Mark Horowitz.
+\newblock 1.1 computing's energy problem (and what we can do about it).
+\newblock In {\em 2014 IEEE International Solid-State Circuits Conference
+  Digest of Technical Papers (ISSCC)}, pages 10--14. IEEE, 2014.
+
+\bibitem{li2022spikeformer}
+Yudong Li, Yunlin Lei, and Xu~Yang.
+\newblock Spikeformer: A novel architecture for training high-performance
+  low-latency spiking neural network.
+\newblock {\em arXiv preprint arXiv:2211.10686}, 2022.
+
+\bibitem{lv2023spikebert}
+Changze Lv, Tianlong Xu, Jianhan Liu, Bingyan Li, Liang Wang, Yufei Zhong, and
+  Lingzhi Wang.
+\newblock Spikebert: A language spikformer trained with two-stage knowledge
+  distillation from bert.
+\newblock {\em arXiv preprint arXiv:2308.15122}, 2023.
+
+\bibitem{muennighoff2022mteb}
+Niklas Muennighoff, Nouamane Tazi, Lo{\"\i}c Magne, and Nils Reimers.
+\newblock Mteb: Massive text embedding benchmark.
+\newblock In {\em Proceedings of the 17th Conference of the European Chapter of
+  the Association for Computational Linguistics}, pages 2014--2037, 2023.
+
+\bibitem{neftci2019surrogate}
+Emre~O Neftci, Hesham Mostafa, and Friedemann Zenke.
+\newblock Surrogate gradient learning in spiking neural networks: Bringing the
+  power of gradient-based optimization to spiking neural networks.
+\newblock {\em IEEE Signal Processing Magazine}, 36(6):51--63, 2019.
+
+\bibitem{reimers2019sentence}
+Nils Reimers and Iryna Gurevych.
+\newblock Sentence-bert: Sentence embeddings using siamese bert-networks.
+\newblock In {\em Proceedings of the 2019 Conference on Empirical Methods in
+  Natural Language Processing and the 9th International Joint Conference on
+  Natural Language Processing (EMNLP-IJCNLP)}, pages 3982--3992, 2019.
+
+\bibitem{roy2019towards}
+Kaushik Roy, Akhilesh Jaiswal, and Priyadarshini Panda.
+\newblock Towards spike-based machine intelligence with neuromorphic computing.
+\newblock {\em Nature}, 575(7784):607--617, 2019.
+
+\bibitem{sanh2019distilbert}
+Victor Sanh, Lysandre Debut, Julien Chaumond, and Thomas Wolf.
+\newblock Distilbert, a distilled version of bert: smaller, faster, cheaper and
+  lighter.
+\newblock {\em arXiv preprint arXiv:1910.01108}, 2019.
+
+\bibitem{tay2022efficient}
+Yi~Tay, Mostafa Dehghani, Dara Bahri, and Donald Metzler.
+\newblock Efficient transformers: A survey.
+\newblock {\em ACM Computing Surveys (CSUR)}, 55(6):1--28, 2022.
+
+\bibitem{vaswani2017attention}
+Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones,
+  Aidan~N Gomez, {\L}ukasz Kaiser, and Illia Polosukhin.
+\newblock Attention is all you need.
+\newblock {\em Advances in neural information processing systems}, 30, 2017.
+
+\bibitem{wang2020minilm}
+Wenhui Wang, Furu Wei, Li~Dong, Hangbo Bao, Nan Yang, and Ming Zhou.
+\newblock Minilm: Deep self-attention distillation for task-agnostic
+  compression of pre-trained transformers.
+\newblock In {\em Advances in Neural Information Processing Systems},
+  volume~33, pages 5776--5788, 2020.
+
+\bibitem{zhou2025spikingformer}
+Chenlin Zhou, Liutao Yu, Zhaokun Zhou, Zhengyu Ma, Han Zhang, Huihui Zhou, and
+  Yonghong Tian.
+\newblock Spikingformer: Spike-driven residual learning for transformer-based
+  spiking neural network.
+\newblock {\em arXiv preprint arXiv:2304.11954}, 2025.
+
+\bibitem{zhou2023spikformer}
+Zhaokun Zhou, Yuesheng Zhu, Chao He, Yaowei Wang, Shuicheng Yan, Yonghong Tian,
+  and Li~Yuan.
+\newblock Spikformer: When spiking neural network meets transformer.
+\newblock In {\em International Conference on Learning Representations}, 2023.
+
+\bibitem{zhu2023spikegpt}
+Rui-Jie Zhu, Qiao Zhao, Guobin Zhang, Pengjie Deng, Hai Li, Yikang Duan, Xiang
+  Cheng, et~al.
+\newblock Spikegpt: Generative pre-trained language model with spiking neural
+  networks.
+\newblock {\em arXiv preprint arXiv:2302.13939}, 2023.
+
+\end{thebibliography}
