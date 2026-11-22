@@ -1,0 +1,28 @@
+{
+ "DistilBERT-base": {
+  "total": 66362880,
+  "embedding(incl. positions/LN)": 23835648,
+  "non_embedding": 42527232
+ },
+ "all-MiniLM-L6-v2": {
+  "total": 22713216,
+  "embedding(incl. positions/LN)": 11918592,
+  "non_embedding": 10794624
+ },
+ "BERT-base": {
+  "total": 109482240,
+  "embedding(incl. positions/LN)": 23837184,
+  "non_embedding": 85645056
+ },
+ "ours_rust_D256": {
+  "embedding": 16384000,
+  "pooler_kernel": 65536,
+  "neuron_params(beta,theta emb+pool)": 1024,
+  "total": 16450560
+ },
+ "ours_HF_v2_D256": {
+  "embedding": 8192000,
+  "pooler_kernel": 65536,
+  "total": 8258816
+ }
+}

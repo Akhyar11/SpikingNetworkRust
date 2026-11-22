@@ -1,0 +1,14 @@
+{
+ "variant": "meanpool",
+ "seed": 1,
+ "epochs": 2.0,
+ "steps": 7686,
+ "train_seconds": 165.3040008544922,
+ "trainable_params_total": 16384000,
+ "embedding_params": 16384000,
+ "non_embedding_params": 0,
+ "encode_ms_per_sentence": 0.0250235262052823,
+ "final_loss": 0.005651838632766157,
+ "bs": 64,
+ "threads": 3
+}

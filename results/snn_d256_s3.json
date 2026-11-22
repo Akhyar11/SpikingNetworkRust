@@ -1,0 +1,17 @@
+{
+  "d": 256,
+  "data": "data_eval/train_decontam.json",
+  "emb_spikes_total": 34356085,
+  "encode_ms_per_sentence": 0.30358829080384525,
+  "epochs": 10,
+  "lr": 2.0,
+  "max_len": 128,
+  "n_sentences": 29023,
+  "seed": 3,
+  "sparsity_excl_pad": 0.6564787236510354,
+  "spikes_per_sentence": 1183.753747028219,
+  "steps": 76870,
+  "token_slots_total": 100011520,
+  "train_seconds": 2114.688930314,
+  "vocab_size": 64000
+}

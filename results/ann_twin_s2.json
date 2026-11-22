@@ -1,0 +1,14 @@
+{
+ "variant": "ann_twin",
+ "seed": 2,
+ "epochs": 2.0,
+ "steps": 7686,
+ "train_seconds": 437.291109085083,
+ "trainable_params_total": 16384000,
+ "embedding_params": 16384000,
+ "non_embedding_params": 0,
+ "encode_ms_per_sentence": 0.0532673585136815,
+ "final_loss": 0.01830350507516414,
+ "bs": 64,
+ "threads": 3
+}

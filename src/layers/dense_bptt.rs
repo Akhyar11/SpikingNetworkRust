@@ -38,7 +38,7 @@ impl SpikingDenseBPTT {
         threshold_range: (f32, f32)
     ) -> Self {
         use rand::SeedableRng;
-        let mut rng = rand::rngs::StdRng::seed_from_u64(42);
+        let mut rng = rand::rngs::StdRng::seed_from_u64(std::env::var("SNN_SEED").ok().and_then(|v| v.parse().ok()).unwrap_or(42));
         let limit = (6.0 / (in_features as f32 + units as f32)).sqrt();
         
         let mut kernel = vec![0.0; in_features * units];

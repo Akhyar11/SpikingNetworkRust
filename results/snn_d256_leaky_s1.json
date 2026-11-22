@@ -1,0 +1,17 @@
+{
+  "d": 256,
+  "data": "experiment/file_model/teacher_distillation_dataset_scored.json",
+  "emb_spikes_total": 33886526,
+  "encode_ms_per_sentence": 0.22122304458532888,
+  "epochs": 10,
+  "lr": 2.0,
+  "max_len": 128,
+  "n_sentences": 29023,
+  "seed": 1,
+  "sparsity_excl_pad": 0.6611737727813756,
+  "spikes_per_sentence": 1167.574888881232,
+  "steps": 78120,
+  "token_slots_total": 100011520,
+  "train_seconds": 2013.44494032,
+  "vocab_size": 64000
+}

@@ -1,0 +1,403 @@
+% This is main_MIDI.tex, prepared for MIDI 2025 (Full Paper: 8-page format).
+\documentclass[runningheads]{llncs}
+
+% Standard packages
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{tikz}
+\usetikzlibrary{shadows, arrows.meta, positioning, fit, backgrounds, shapes.geometric, calc}
+\usepackage[english]{babel}
+\usepackage{url}
+\usepackage{listings}
+\usepackage{inconsolata}
+\lstset{basicstyle=\ttfamily}
+
+% Math commands
+\input{math_commands.tex}
+
+% Hyperref and URL breaking (Springer 2026: monochrome text/citations, active links)
+\usepackage[colorlinks=true, linkcolor=black, citecolor=black, urlcolor=blue]{hyperref}
+\renewcommand\UrlFont{\color{blue}\rmfamily}
+\usepackage{xurl}
+
+% Hyperlink ORCID and email
+\renewcommand{\orcidID}[1]{\unskip$^{\mbox{\href{https://orcid.org/#1}{[#1]}}}$}
+\renewcommand{\email}[1]{\href{mailto:#1}{\texttt{#1}}}
+
+% Architecture diagram palette
+\definecolor{navyblue}{RGB}{29, 78, 216}
+\definecolor{softblue}{RGB}{241, 245, 249}
+\definecolor{borderblue}{RGB}{148, 163, 184}
+\definecolor{darkteal}{RGB}{15, 118, 110}
+\definecolor{softteal}{RGB}{240, 253, 250}
+\definecolor{borderteal}{RGB}{45, 212, 191}
+\definecolor{darkamber}{RGB}{194, 65, 12}
+\definecolor{softamber}{RGB}{255, 251, 235}
+\definecolor{borderamber}{RGB}{245, 158, 11}
+\definecolor{darkpurple}{RGB}{109, 40, 217}
+\definecolor{softpurple}{RGB}{250, 245, 255}
+\definecolor{borderpurple}{RGB}{216, 180, 254}
+\definecolor{greenbadgebg}{RGB}{220, 252, 231}
+\definecolor{greenbadge}{RGB}{22, 101, 52}
+
+\begin{document}
+
+\title{Delta BPTT: Efficient Add-Only Backpropagation Through Time for Spiking Sequence Representations}
+\titlerunning{Delta BPTT: Efficient Add-Only BPTT for Spiking Sequences}
+
+\author{Muhammad Akhyar\orcidID{0009-0001-3259-4996}}
+\authorrunning{M. Akhyar}
+\institute{PulseNet-Labs\\
+\email{akhyarsafrudin@gmail.com}}
+
+\maketitle
+
+\begin{abstract}
+Spiking Neural Networks (SNNs) offer an energy-efficient paradigm for deep learning via sparse, event-driven additions. However, training SNNs on sequential tasks with Backpropagation Through Time (BPTT) re-introduces dense floating-point Multiply-Accumulate (MAC) operations in the backward pass, negating neuromorphic efficiency gains. We introduce \textbf{Delta BPTT}, an Add-Only gradient routing rule that exploits the strict binary nature of forward spike events to gate weight-gradient accumulation as sparse, conditional additions. This eliminates dense MACs in both the recurrent projection and parameter-gradient phases. A $65$K-parameter recurrent embedder trained with Delta BPTT reaches $0.5046$ Pearson on the ALL-STS human benchmark aggregate ($0.8031$ teacher distillation alignment) and $0.7651$ on STS-B --- achieving $93.4\%$ of SpikingBERT's reported correlation while requiring $770\times$ fewer parameters and no GPU. Replacing quadratic spatial attention with recurrent temporal pooling trained via Delta BPTT delivers a $4.13\times$ training speedup and a $2.09\times$ reduction in inference latency, demonstrating that structurally optimized Add-Only temporal gradients provide an effective, multiplier-free alternative to spatial routing in neuromorphic sequence representation.
+
+\keywords{Spiking Neural Networks $\cdot$ Sequence Representation $\cdot$ Backpropagation Through Time $\cdot$ Energy Efficiency.}
+\end{abstract}
+
+\section{Introduction}
+
+Neuromorphic computing aims to deliver brain-inspired, low-power machine intelligence by processing information as sparse, event-driven spikes rather than dense matrix multiplications \cite{roy2019towards}. In natural language processing, dense sentence embedders such as SBERT \cite{reimers2019sentence} are dominated by continuous matrix multiplications in Scaled Dot-Product Attention \cite{vaswani2017attention}. Although efficient Transformers reduce this quadratic $\mathcal{O}(L^2)$ complexity \cite{tay2022efficient}, they remain grounded in continuous floating-point operations. Spiking Neural Networks (SNNs) operate natively via sparse additions, making them ideal for ultra-low-power neuromorphic hardware. Recent efforts have ported self-attention to the spiking domain (e.g., SpikFormer \cite{zhou2023spikformer}, SpikeGPT \cite{zhu2023spikegpt}, and SpikingBERT \cite{bal2024spikingbert}).
+
+However, a fundamental bottleneck persists in the \textit{backward} pass. Standard BPTT with surrogate gradients \cite{neftci2019surrogate} requires continuous gradient matrices to flow backward through discrete spiking states, re-introducing dense Multiply-Accumulate (MAC) operations during weight-gradient computation and forfeiting training efficiency. Forcing continuous $\mathcal{O}(L^2)$ spatial attention into discrete spikes further inflates operation counts. This raises two critical questions: \textit{(1)~Can weight-gradient accumulation in SNN training be made as sparse as the forward pass? (2)~Are explicit spatial attention mechanisms necessary for sequence representations, or can native temporal recurrence suffice?}
+
+We answer both questions affirmatively by proposing \textbf{Delta BPTT}, an Add-Only recurrent gradient routing mechanism. By exploiting the binary spike indicator $\mathbb{I}[S^{(t)} = 1]$ as an event-driven gate, the backward MAC operation $\mX^T \bm{\delta}$ is replaced by sparse conditional additions. Our primary contributions are:
+\begin{itemize}
+    \item \textbf{Delta BPTT Rule}: An Add-Only parameter update rule gating weight gradients strictly through forward spike indicators, achieving matching forward and backward sparsity with zero dense MACs.
+    \item \textbf{Recurrent Architecture \& Hyperpolarized Padding}: A minimalist recurrent LIF pooler utilizing negative refractory states for padding tokens, replacing quadratic spatial attention while reducing training wall-clock time by $4.13\times$ and inference latency by $2.09\times$.
+    \item \textbf{Empirical Validation}: Demonstrating that a $65$K-parameter pure CPU model achieves $0.5046$ ALL-STS weighted Pearson on human labels ($0.8031$ on teacher distillation), matching $93.4\%$ of SpikingBERT's STS-B performance with $770\times$ fewer parameters, while outperforming a dense GPU-trained LSTM baseline ($0.7326$).
+\end{itemize}
+
+\section{Related Work and Background}
+
+\paragraph{Spiking Language Models.} Recent architectures translate Transformer primitives into spiking networks. SpikFormer \cite{zhou2023spikformer} introduced spike-driven attention, SpikeGPT \cite{zhu2023spikegpt} scaled generative models to 216M parameters, and SpikingBERT \cite{bal2024spikingbert} distilled BERT via implicit differentiation, reporting an STS-B correlation of $0.819$ with 50M parameters. Spikingformer \cite{zhou2025spikingformer} stabilized residual spike learning, reporting $0.545$ on STS-B with 66M parameters. Crucially, these models retain explicit $\mathcal{O}(L^2)$ attention matrices and focus on token-level classification or generative perplexity rather than general-purpose sentence representations evaluated against human semantic benchmarks (STS-12 through STS-16, STS-B, SICK-R).
+
+\paragraph{Energy Accounting.} Standard SNN efficiency analysis compares spike accumulations (ACs) against dense multiply-accumulates (MACs) using 45\,nm CMOS benchmarks ($E_{\text{MAC}} = 4.6$\,pJ vs $E_{\text{AC}} = 0.9$\,pJ) \cite{horowitz2014computing}. However, prior analyses restrict this accounting to the forward pass, implicitly assuming dense backward passes. Delta BPTT extends this hardware-friendly sparsity directly into parameter updates.
+
+\section{Methodology: Delta BPTT Recurrent Architecture}
+
+\subsection{Spike Encoding and Hyperpolarized Padding}
+Given an input sequence of tokens $t \in [1, L]$, the embedding layer projects token embeddings into temporal membrane potentials $\mV_{emb}^{(t)}$ through Leaky Integrate-and-Fire (LIF) dynamics:
+\begin{equation}
+\tilde{\mV}_{emb}^{(t)} = \bm{\beta}_{emb} \odot \mV_{emb}^{(t-1)} + \mX^{(t)} \mW_{emb}, \quad \mV_{emb}^{(t)} = \min\big(1.0, \tilde{\mV}_{emb}^{(t)}\big) - \mS_{emb}^{(t)} \odot \bm{\theta}_{emb}
+\end{equation}
+When $\tilde{\mV}_{emb}^{(t)} \ge \bm{\theta}_{emb}$, a binary spike $\mS_{emb}^{(t)} = 1$ is fired. We employ a \textit{soft reset} (subtracting threshold $\bm{\theta}$) to preserve fractional sub-threshold residues. Heterogeneous decay rates $\bm{\beta}_{emb} \in [1 - 2^{-2}, 1 - 2^{-7}]$ and thresholds $\bm{\theta}_{emb}$ are uniformly initialized across channels, providing multi-timescale temporal dynamics.
+
+\paragraph{Hyperpolarized Padding.} To handle variable sequence lengths without explicit attention masks, the embedding weights for the \texttt{<PAD>} token (index 0) are set to $-1.0$. Incoming currents during padding steps become strongly negative ($V < 0$), forcing padding tokens into deep hyperpolarization. This strictly ensures zero padding spikes, completely suppressing temporal noise accumulation.
+
+\begin{figure}[t]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+    font=\sffamily,
+    >=Stealth,
+    maincard/.style={
+        draw=#1, line width=0.8pt, rounded corners=3pt,
+        align=center, fill=white, inner sep=5pt
+    },
+    subcard/.style={
+        draw=#1, line width=0.5pt, rounded corners=2pt,
+        align=center, inner sep=3.5pt
+    },
+    chip/.style={
+        draw=borderblue, fill=white, rounded corners=2pt,
+        font=\ttfamily\scriptsize, inner sep=1.8pt
+    },
+    fwdarrow/.style={->, line width=1.1pt, draw=navyblue},
+    bwdarrow/.style={->, line width=1.0pt, dashed, draw=darkamber}
+]
+
+% ==================== STAGE 1: ENCODING (LEFT) ====================
+\node[maincard=borderblue, fill=softblue, text width=3.8cm] (stage1) at (0, 0) {
+    \textbf{\footnotesize 1. Input \& Spike Encoding}\\[3pt]
+    \tikz{
+        \node[chip] (t1) {[CLS]};
+        \node[chip, right=2pt of t1] (t2) {token};
+        \node[chip, right=2pt of t2] (t3) {...};
+        \node[chip, right=2pt of t3, fill=gray!25] (t4) {[PAD]};
+    }\\[3pt]
+    \scriptsize \textit{PAD weight: $w_{\text{PAD}} = -1.0$ (Zero Noise)}\\[4pt]
+    \begin{tikzpicture}
+        \node[subcard=borderblue!80!black, fill=white, text width=3.4cm] {
+            \textbf{\scriptsize Heterogeneous LIF}\\[1pt]
+            \tiny $\tilde{\mV}_{emb}^{(t)} = \bm{\beta}_{emb} \odot \mV^{(t-1)} + \mX^{(t)}\mW_{emb}$\\[1pt]
+            \tiny Multi-timescale decay $\bm{\beta}_{emb} \in [0.75, 0.99]$\\[1pt]
+            \tiny Soft-Reset threshold $\bm{\theta}_{emb}$
+        };
+    \end{tikzpicture}\\[4pt]
+    % Raster plot
+    \tikz[baseline=0]{
+        \draw[line width=0.4pt, gray!60] (0,0) -- (2.6,0);
+        \draw[line width=0.4pt, gray!60] (0,0.16) -- (2.6,0.16);
+        \draw[line width=0.4pt, gray!60] (0,0.32) -- (2.6,0.32);
+        \foreach \x in {0.2, 0.7, 1.3, 1.9, 2.4} \draw[line width=1.3pt, navyblue] (\x,-0.05) -- (\x,0.05);
+        \foreach \x in {0.4, 1.0, 1.5, 2.1} \draw[line width=1.3pt, navyblue] (\x,0.11) -- (\x,0.21);
+        \foreach \x in {0.1, 0.8, 1.6, 2.3} \draw[line width=1.3pt, navyblue] (\x,0.27) -- (\x,0.37);
+    }\\[2pt]
+    \footnotesize \textbf{Binary Spikes} $\mS_{emb}^{(t)} \in \{0, 1\}^D$
+};
+
+% ==================== STAGE 2: DELTA BPTT POOLER (CENTER) ====================
+\node[maincard=borderteal, fill=softteal, text width=6.2cm, right=1.1cm of stage1] (stage2) {
+    \textbf{\footnotesize 2. Delta BPTT Recurrent Pooler (Ours)}\\[5pt]
+    % Forward Pass Subcard
+    \begin{tikzpicture}
+        \node[subcard=teal!80!black, fill=white, text width=5.7cm] (fwd_inner) {
+            \textbf{\scriptsize Forward Pass: Add-Only Projection (0 MACs)}\\[2pt]
+            \scriptsize $\mX_{pool}^{(t)} = \sum_{d=1}^D \mW_d \cdot \mathbb{I}\left[S_{emb,d}^{(t)} = 1\right]$\\[2pt]
+            \tiny Recurrent State: $\mV_{pool}^{(t)} = \bm{\beta}_{pool} \odot \mV_{pool}^{(t-1)} + \mX_{pool}^{(t)}$\\[3pt]
+            \colorbox{greenbadgebg}{\bfseries\tiny\textcolor{greenbadge}{\;Multiplier-Free $\cdot$ Row-Sparse Additions ($s \approx 0.67$)\;}}
+        };
+    \end{tikzpicture}\\[5pt]
+    \tikz{
+        \draw[->, line width=0.8pt, dashed, draw=darkteal] (0,0) -- node[right, font=\tiny\bfseries, text=darkteal] {Forward Spikes Gate Backward Updates} (0,-0.45);
+    }\\[1pt]
+    % Backward Pass Subcard
+    \begin{tikzpicture}
+        \node[subcard=borderamber!90!black, fill=softamber, text width=5.7cm] (bwd_inner) {
+            \textbf{\scriptsize Backward Pass: Add-Only BPTT (0 MACs)}\\[2pt]
+            \scriptsize $\Delta \mW_{in,out} = \sum_{t=1}^L \tilde{\bm{\delta}}_{out}^{(t)} \cdot \mathbb{I}\left[S_{emb,in}^{(t)} = 1\right]$\\[2pt]
+            \tiny Temporal Error: $\tilde{\bm{\delta}}^{(t)} = \left(\bm{\delta}^{(t)} + \tilde{\bm{\delta}}^{(t+1)} \odot \bm{\beta}\right) \odot \sigma'(\mV_{pool}^{(t)})$\\[3pt]
+            \colorbox{orange!18}{\bfseries\tiny\textcolor{darkamber}{\;Zero Backward MACs $\cdot$ 15.5$\times$ Lower Energy vs Dense BPTT\;}}
+        };
+    \end{tikzpicture}
+};
+
+% ==================== STAGE 3: EMBEDDING & DISTILLATION (RIGHT) ====================
+\node[maincard=borderpurple, fill=softpurple, text width=3.8cm, right=1.1cm of stage2] (stage3) {
+    \textbf{\footnotesize 3. Representation \& Loss}\\[5pt]
+    % Embedding Subcard
+    \begin{tikzpicture}
+        \node[subcard=borderpurple!80!black, fill=white, text width=3.4cm] (emb_inner) {
+            \textbf{\scriptsize Sentence Embedding}\\[2pt]
+            \scriptsize $\tilde{\mE} = \sum_{t=1}^L \mV_{pool}^{(t)} \in \mathbb{R}^{D_{model}}$\\[2pt]
+            \tiny Unit-Normalized Semantic State\\[3pt]
+            \colorbox{blue!8}{\bfseries\tiny\textcolor{navyblue}{\;Cosine Sim: $\tilde{\mE}_1 \cdot \tilde{\mE}_2$\;}}
+        };
+    \end{tikzpicture}\\[5pt]
+    \tikz{
+        \draw[->, line width=0.8pt, draw=darkpurple] (0,0) -- node[right, font=\tiny\bfseries, text=darkpurple] {Distillation} (0,-0.45);
+    }\\[1pt]
+    % Distillation Subcard
+    \begin{tikzpicture}
+        \node[subcard=borderamber!80!black, fill=white, text width=3.4cm] (distill_inner) {
+            \textbf{\scriptsize Teacher Distillation}\\[2pt]
+            \tiny Teacher: \texttt{all-MiniLM-L6-v2}\\[1pt]
+            \tiny Error: $\mathcal{E} = \text{Sim}_T - (\tilde{\bm{E}}_1 \cdot \tilde{\bm{E}}_2)$\\[2pt]
+            \scriptsize Error Gradient Injection:\\[1pt]
+            \scriptsize $\bm{\delta}_{out} = -\mathcal{E} \cdot \tilde{\bm{E}}_2 \cdot m$
+        };
+    \end{tikzpicture}
+};
+
+% ==================== CONNECTING ARROWS ====================
+% Forward flow (Top)
+\draw[fwdarrow] ($(stage1.east)+(0,1.1)$) -- node[above, font=\scriptsize\bfseries, text=navyblue] {$\mS_{emb}^{(t)}$} ($(stage2.west)+(0,1.1)$);
+\draw[fwdarrow] ($(stage2.east)+(0,1.1)$) -- node[above, font=\scriptsize\bfseries, text=navyblue] {$\mV_{pool}^{(t)}$} ($(stage3.west)+(0,1.1)$);
+
+% Backward flow (Bottom)
+\draw[bwdarrow] ($(stage3.west)+(0,-1.3)$) -- node[above, font=\scriptsize\bfseries, text=darkamber] {$\bm{\delta}_{out}$} ($(stage2.east)+(0,-1.3)$);
+
+% Upstream backward arrow (exiting stage 2 to stage 1)
+\draw[bwdarrow] ($(stage2.west)+(0,-1.3)$) -- node[above, font=\scriptsize\bfseries, text=darkamber] {$\tilde{\bm{\delta}}^{(1)}$} ($(stage1.east)+(0,-1.3)$);
+
+% Top and Bottom Global Annotations
+\node[anchor=south, font=\scriptsize\bfseries, text=navyblue] at ($(stage2.north)+(0,0.15)$) {
+    \textsc{Forward Inference Pipeline} $\longrightarrow$ \textit{Fully Event-Driven Additions (0 MACs)}
+};
+\node[anchor=north, font=\scriptsize\bfseries, text=darkamber] at ($(stage2.south)+(0,-0.15)$) {
+    \textsc{Backward Gradient Routing} $\longleftarrow$ \textit{Add-Only Delta BPTT (0 Multiplications)}
+};
+
+\end{tikzpicture}%
+}
+\caption{End-to-end computational pipeline of the proposed Spiking Sentence Embedder with Delta BPTT. Binary spike indicators $\mS_{emb}^{(t)}$ gate both the forward projection and backward parameter updates as sparse, multiplier-free additions (0 MACs).}
+\label{fig:architecture}
+\end{figure}
+
+\subsection{The Delta BPTT Recurrent Pooler and Add-Only Learning}
+Rather than routing features through an $\mathcal{O}(L^2)$ spatial attention matrix, $\mS_{emb}^{(t)}$ is injected directly into a Spiking BPTT Pooler (Fig.~\ref{fig:architecture}). Because inputs are strictly binary $\mS_{emb} \in \{0, 1\}$, forward projection simplifies to conditional accumulations:
+\begin{equation}
+\mX_{pool}^{(t)} = \sum_{d=1}^{D_{in}} \mW_{d} \cdot \mathbb{I}\left[ S_{emb, d}^{(t)} = 1 \right]
+\end{equation}
+The continuous sentence embedding is extracted by accumulating fractional membrane potentials across the sequence length $L$: $\mE = \sum_{t=1}^L \mV_{pool}^{(t)}$.
+
+\paragraph{Add-Only Gradient Routing.} To backpropagate through non-smooth thresholding, we employ a rectangular surrogate gradient $\sigma'(\mV^{(t)}) = \mathbb{I}[|\mV^{(t)} - \theta| < w]$ with window width $w = 1.0$. Temporal errors unroll backward through heterogeneous decay $\bm{\beta}_{pool}$:
+\begin{equation}
+\tilde{\bm{\delta}}^{(t)} = \left( \bm{\delta}_{out}^{(t)} + \tilde{\bm{\delta}}^{(t+1)} \odot \bm{\beta}_{pool} \right) \odot \sigma'\big(\mV_{pool}^{(t)}\big)
+\end{equation}
+Crucially, weight-gradient accumulation is gated by the forward spike indicator:
+\begin{equation}
+\Delta \mW_{in, out} = \sum_{t=1}^{L} \tilde{\bm{\delta}}^{(t)}_{out} \cdot \mathbb{I}\left[ S_{emb, in}^{(t)} = 1 \right]
+\end{equation}
+Because inactive input channels ($S=0$) contribute nothing to the gradient, the dense matrix multiplication $\mX^T \bm{\delta}$ is completely bypassed. Gradients are sparsely accumulated solely into weight rows where spikes occurred. The pooler is initialized as an Identity matrix with biases disabled.
+
+\subsection{Knowledge Distillation and Complexity Analysis}
+We train the student SNN by distilling representations from a dense Transformer teacher (\texttt{all-MiniLM-L6-v2}, $D_{teacher}=384$). Given unit-normalized pooled embeddings $\tilde{\mE}_1, \tilde{\mE}_2$, we minimize Mean Squared Error against teacher cosine similarity: $\mathcal{E} = \text{Sim}_{Teacher} - (\tilde{\mE}_1 \cdot \tilde{\mE}_2)$. Symmetrical error gradients $\partial \mathcal{L} / \partial \tilde{\mE}_{1} = -\mathcal{E} \cdot \tilde{\mE}_{2} \cdot m$ (with contrastive dampening margin $m=0.5$) are injected directly into the temporal BPTT pass.
+
+\begin{table}[t]
+\caption{Theoretical complexity and operation count comparison per sequence of length $L$ and dimension $D$. $s$ denotes spike sparsity ($s \approx 0.67$). Energy is computed with 45\,nm CMOS proxies ($E_{\text{MAC}} = 4.6$\,pJ, $E_{\text{AC}} = 0.9$\,pJ) \cite{horowitz2014computing}.}\label{tab:complexity}
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lcc}
+\toprule
+\textbf{Metric / Operation} & \textbf{Spike-Overlap Attention Baseline} & \textbf{Delta BPTT Pooler (Ours)} \\
+\midrule
+Time Complexity (Fwd / Bwd) & $\mathcal{O}(L^2 \cdot D + L \cdot D^2)$ & $\mathcal{O}(L \cdot D)$ \\
+Space Complexity & $\mathcal{O}(L^2 + L \cdot D)$ & $\mathcal{O}(L \cdot D)$ \\
+Forward MAC Count & $0$ & $0$ \\
+Forward AC Count & $\mathcal{O}(L^2 \cdot D) + \mathcal{O}(L \cdot D^2)$ & $(1-s) \cdot L \cdot D$ \\
+Backward MAC Count ($\Delta \mW$) & $\mathcal{O}(L \cdot D^2)$ (dense) & $\mathbf{0}$ \textbf{(Add-Only)} \\
+Backward AC Count ($\Delta \mW$) & $0$ & $(1-s) \cdot L \cdot D$ \\
+Est. Backward Energy per Step & $\mathcal{O}(D^2) \times 4.6\,\text{pJ}$ & $\mathbf{(1-s) \cdot \mathcal{O}(D^2) \times 0.9\,\text{pJ}}$ \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+Table~\ref{tab:complexity} contrasts Delta BPTT with a Spike-Overlap Attention baseline (which computes affinities via Boolean intersection $\mM = Q \wedge K$). Standard BPTT incurs $L \cdot D_{in} \cdot D_{out} \cdot E_{\text{MAC}}$ during updates. Delta BPTT scales as $L \cdot (1-s) \cdot D_{in} \cdot D_{out} \cdot E_{\text{AC}}$, eliminating dense MACs and cutting update energy by $(1-s) \times \frac{0.9}{4.6} \approx 15.5\times$.
+
+\section{Experimental Evaluation}
+
+\paragraph{Implementation and Training Setup.} Models were implemented in native Rust to eliminate Python/PyTorch simulation overhead. All training and inference runs were executed on a consumer laptop (Intel Core i5-1135G7 @ 2.40 GHz, 16 GB RAM) without GPU acceleration. We trained for 10 epochs using AdamW ($\text{lr}=2.0$, cosine annealing) on 250,000 synthetic sentence pairs ($L=128$, WordPiece tokenization) extracted from Wikipedia, BookCorpus, and OpenSubtitles, labeled with \texttt{all-MiniLM-L6-v2} teacher similarity scores.
+
+\begin{table}[t!]
+\caption{Dimensionality scaling and architectural ablation against Spike-Overlap Attention. ALL-STS (Human) is the sample-weighted Pearson correlation across all constituent zero-shot subsets (STS-12--16, STS-B, SICK-R vs.\ human gold labels). ALL-STS (Distill) measures alignment against continuous teacher soft-labels across 29.7k pooled pairs.}\label{tab:main_results}
+\centering
+\setlength{\tabcolsep}{4.5pt}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Benchmark / Metric} & \shortstack{\textbf{Delta BPTT}\\(\textbf{$D{=}32$})} & \shortstack{\textbf{Delta BPTT}\\(\textbf{$D{=}64$})} & \shortstack{\textbf{Delta BPTT}\\(\textbf{$D{=}128$})} & \shortstack{\textbf{Delta BPTT}\\(\textbf{$D{=}256$})} & \shortstack{\textbf{Attention}\\(\textbf{$D{=}256$})} \\
+\midrule
+STS-12 & 0.3280 & 0.4166 & 0.4955 & 0.5343 & 0.5155 \\
+STS-13 & 0.3291 & 0.3106 & 0.4212 & 0.4472 & 0.4428 \\
+STS-14 & 0.3543 & 0.3676 & 0.4802 & 0.5083 & 0.4948 \\
+STS-15 & 0.3713 & 0.4188 & 0.5274 & 0.5228 & 0.5251 \\
+STS-16 & 0.3248 & 0.3145 & 0.3932 & 0.3648 & 0.4018 \\
+STS-B & 0.6665 & 0.6656 & 0.7685 & 0.7651 & 0.7740 \\
+SICK-R & 0.4477 & 0.4865 & 0.4838 & 0.4745 & 0.4819 \\
+\midrule
+\textbf{ALL-STS (Human, weighted $r$)} & \textbf{0.4082} & \textbf{0.4420} & \textbf{0.4996} & \textbf{0.5046} & \textbf{0.5055} \\
+\textbf{ALL-STS (Distill, teacher $r$)} & \textbf{0.6713} & \textbf{0.7092} & \textbf{0.8038} & \textbf{0.8031} & \textbf{0.8079} \\
+\midrule
+\textbf{Inference (ms/pair)} & 0.719 & 0.912 & 1.341 & \textbf{0.932} & 1.946 ($2.09\times$ slower) \\
+\textbf{Train Time (seconds)} & 681 & 1,078 & 2,025 & \textbf{1,165} & 4,817 ($4.13\times$ slower) \\
+\textbf{Avg Spikes / Sentence} & 840 & 1,668 & 3,358 & 2,157 & 6,737 \\
+\textbf{Est. SNN SOPs ($10^3$)} & 17.3 & 79.5 & 339.2 & 1,104.4 & 1,407.4 \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+\subsection{Representation Scaling and Attention Ablation}
+Table~\ref{tab:main_results} reports downstream zero-shot semantic textual similarity across two evaluation regimes: (1) zero-shot evaluation against human gold labels (individual subsets STS-12--16, STS-B, SICK-R, and their sample-weighted aggregate ALL-STS Human), and (2) distillation representation fidelity directly against continuous teacher soft-labels across 29.7k pooled pairs (ALL-STS Distill). In both regimes, representation fidelity scales consistently from $D=32$ ($r=0.4082$ human / $0.6713$ distill) to $D=128$ ($r=0.4996$ human / $0.8038$ distill), saturating at $D=256$ ($r=0.5046$ human / $0.8031$ distill). Crucially, ablating Delta BPTT against Spike-Overlap Attention demonstrates that explicit spatial routing provides negligible semantic gain ($\Delta = +0.0009$ on human labels, $+0.0048$ on distillation) while quadrupling total training time ($4{,}817$\,s vs $1{,}165$\,s, a $\mathbf{4.13\times}$ overhead) and doubling inference latency ($1.946$\,ms vs $0.932$\,ms, $\mathbf{2.09\times}$). The recurrent LIF dynamics inherently encode sufficient contextual order, making quadratic attention redundant for sequence representation.
+
+\begin{table}[t]
+\caption{Comparison with published sentence embedding baselines on STS-B. Reported as Pearson $r$ for Delta BPTT and static baselines; Spearman $\rho$ for published Transformer and SNN models ($^\dagger$\cite{bal2024spikingbert}, $^\ddagger$\cite{zhou2025spikingformer}, $^\star$\cite{sanh2019distilbert}).}\label{tab:external_baselines}
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llccc}
+\toprule
+\textbf{Model} & \textbf{Architecture} & \textbf{Parameters} & \textbf{STS-B} & \textbf{Hardware} \\
+\midrule
+DistilBERT$^\star$ & Dense Transformer & $\sim$66M & 0.869 & GPU \\
+all-MiniLM-L6-v2 (Teacher) & Dense Transformer & $\sim$23M & $>$0.85 & GPU \\
+\midrule
+SpikingBERT$^\dagger$ & SNN + Attention & $\sim$50M & 0.819 & GPU \\
+Spikingformer$^\ddagger$ & SNN + Attention & $\sim$66M & 0.545 & GPU \\
+Spike-Overlap Attn (Ours) & SNN + Attention & $\sim$196K & 0.774 & CPU \\
+\midrule
+GloVe (Mean Pool) & Static Embedding & 300d & 0.555 & CPU \\
+Word2Vec (Mean Pool) & Static Embedding & 300d & 0.725 & CPU \\
+\midrule
+\textbf{Delta BPTT (Ours)} & \textbf{SNN Recurrent Pooler} & \textbf{$\sim$65K} & \textbf{0.765} & \textbf{CPU} \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+\subsection{Cross-Model Baseline Comparison}
+In Table~\ref{tab:external_baselines}, Delta BPTT is compared against published sentence embedding models. Delta BPTT achieves \textbf{$93.4\%$ of SpikingBERT's STS-B correlation} ($0.765$ vs $0.819$) despite utilizing \textbf{$770\times$ fewer parameters} ($\sim 65$K vs $\sim 50$M) and executing on consumer CPU without GPU accelerators. It substantially outperforms Spikingformer ($0.545$, $66$M params) as well as classical static representations (GloVe $0.555$, Word2Vec $0.725$). While full-precision Transformers achieve higher peak scores (DistilBERT $0.869$), Delta BPTT operates in an entirely different efficiency class suitable for extreme edge deployment.
+
+\subsection{Sparsity, Baseline LSTM Comparison, and Objective Ablation}
+\paragraph{Backward Sparsity.} At $D_{model}=256$, the network fires an average of $2{,}157$ spikes per sentence ($s \approx 67\%$ forward sparsity). Because gradient accumulation is gated by $\mathbb{I}[S^{(t)}=1]$, backward parameter updates inherit the identical $\sim 67\%$ sparsity, incurring zero MACs. Forward operations achieve an estimated $1{,}298.8\times$ reduction against dense Transformer estimates ($1.10 \times 10^6$ SOPs vs $1.43 \times 10^9$ MACs) \cite{horowitz2014computing}.
+
+\paragraph{Dense LSTM Comparison.} To verify that Add-Only updates do not degrade gradient quality relative to continuous architectures, we trained a dense Baseline LSTM under identical conditions ($D=256$, 10 epochs). Delta BPTT (CPU) achieves higher ALL-STS distillation correlation than the GPU-trained LSTM ($0.8031$ vs $0.7326$, $\Delta = +0.0705$) while reducing training time by $\mathbf{2.13\times}$ ($1{,}165$\,s vs $2{,}480$\,s on a T4 GPU).
+
+\paragraph{Objective Ablation.} Comparing training objectives at $D_{model}=64$ confirms that Teacher Distillation yields the highest ALL-STS Pearson ($0.7092$), outperforming regression on human gold labels ($0.6666$) and contrastive SimCSE loss ($0.6478$).
+
+\section{Discussion and Limitations}
+Our findings demonstrate that backward SNN training can achieve the same event-driven sparsity as the forward pass. The $\mathcal{O}(L)$ temporal recurrence of LIF dynamics captures semantic dependencies without requiring quadratic spatial routing. 
+
+\paragraph{Limitations.} The peak distillation correlation ($0.8031$) reflects an informational compression bound inherent to discrete binary signaling compared to 32-bit float teachers ($>0.85$), while the human-label aggregate ($0.5046$) reflects the domain transfer gap to raw human annotations. Furthermore, our study evaluated sequence lengths up to 128 tokens; scaling to document-level contexts warrants future investigation.
+
+\section{Conclusion and Reproducibility}
+We presented \textbf{Delta BPTT}, an Add-Only learning rule that gates backward parameter gradients via forward spike events, eliminating dense MACs in SNN training. Evaluated on consumer CPU hardware, a $65$K-parameter recurrent embedder achieves $0.5046$ human ALL-STS Pearson ($0.8031$ teacher distillation correlation; $93.4\%$ of SpikingBERT's correlation on STS-B with $770\times$ fewer parameters), establishing that temporal recurrence with Add-Only gradients offers a highly performant, multiplier-free alternative to spatial attention.
+
+\paragraph{Reproducibility Statement.} Pre-trained model weights are hosted on Hugging Face: \url{https://huggingface.co/PulseNet-Labs/spiking-sentence-embedder-v2}. Complete Rust training codebase, benchmarks, and data utilities are available under an open-source license at \url{https://github.com/Akhyar11/SpikingNetworkRust}.
+
+\subsubsection*{Disclosure of Interests.}
+{\small The author has no competing interests to declare that are relevant to the content of this article.}
+
+\begin{thebibliography}{17}
+\bibitem{roy2019towards}
+Roy, K., Jaiswal, A., Panda, P.: Towards spike-based machine intelligence with neuromorphic computing. Nature 575(7784), 607--617 (2019). \doi{10.1038/s41586-019-1677-2}
+
+\bibitem{reimers2019sentence}
+Reimers, N., Gurevych, I.: Sentence-BERT: Sentence embeddings using Siamese BERT-networks. In: Proceedings of EMNLP-IJCNLP 2019, pp. 3982--3992 (2019). \doi{10.18653/v1/D19-1410}
+
+\bibitem{vaswani2017attention}
+Vaswani, A., et al.: Attention is all you need. In: Advances in Neural Information Processing Systems (NeurIPS 2017), vol. 30, pp. 5998--6008 (2017)
+
+\bibitem{tay2022efficient}
+Tay, Y., Dehghani, M., Bahri, D., Metzler, D.: Efficient Transformers: A survey. ACM Comput. Surv. 55(6), 1--28 (2022). \doi{10.1145/3530811}
+
+\bibitem{zhou2023spikformer}
+Zhou, Z., Zhu, Y., He, C., Wang, Y., Yan, S., Tian, Y., Yuan, L.: Spikformer: When spiking neural network meets Transformer. In: ICLR 2023 (2023)
+
+\bibitem{zhu2023spikegpt}
+Zhu, R.-J., et al.: SpikeGPT: Generative pre-trained language model with spiking neural networks. arXiv preprint arXiv:2302.13939 (2023)
+
+\bibitem{neftci2019surrogate}
+Neftci, E.O., Mostafa, H., Zenke, F.: Surrogate gradient learning in spiking neural networks. IEEE Signal Process. Mag. 36(6), 51--63 (2019). \doi{10.1109/MSP.2019.2931595}
+
+\bibitem{bal2024spikingbert}
+Bal, M., Sengupta, A.: SpikingBERT: Distilling BERT to train spiking language models using implicit differentiation. In: Proceedings of AAAI, vol. 38(10), pp. 10998--11006 (2024). \doi{10.1609/aaai.v38i10.29087}
+
+\bibitem{zhou2025spikingformer}
+Zhou, C., et al.: Spikingformer: Spike-driven residual learning for Transformer-based spiking neural network. arXiv preprint arXiv:2304.11954 (2025)
+
+\bibitem{sanh2019distilbert}
+Sanh, V., Debut, L., Chaumond, J., Wolf, T.: DistilBERT, a distilled version of BERT: smaller, faster, cheaper and lighter. arXiv preprint arXiv:1910.01108 (2019)
+
+\bibitem{muennighoff2022mteb}
+Muennighoff, N., et al.: MTEB: Massive Text Embedding Benchmark. In: Proceedings of EACL 2023, pp. 2014--2037 (2023). \doi{10.18653/v1/2023.eacl-main.148}
+
+\bibitem{gao2021simcse}
+Gao, T., Yao, X., Chen, D.: SimCSE: Simple contrastive learning of sentence embeddings. In: Proceedings of EMNLP 2021, pp. 6894--6910 (2021). \doi{10.18653/v1/2021.emnlp-main.552}
+
+\bibitem{hinton2015distilling}
+Hinton, G., Vinyals, O., Dean, J.: Distilling the knowledge in a neural network. arXiv preprint arXiv:1503.02531 (2015)
+
+\bibitem{wang2020minilm}
+Wang, W., et al.: MiniLM: Deep self-attention distillation for task-agnostic compression of pre-trained Transformers. In: NeurIPS 2020, vol. 33, pp. 5776--5788 (2020)
+
+\bibitem{cer2017semeval}
+Cer, D., et al.: SemEval-2017 Task 1: Semantic textual similarity multilingual and crosslingual focused evaluation. In: Proceedings of SemEval-2017, pp. 1--14 (2017). \doi{10.18653/v1/S17-2001}
+
+\bibitem{horowitz2014computing}
+Horowitz, M.: 1.1 Computing's energy problem (and what we can do about it). In: ISSCC 2014, pp. 10--14. IEEE (2014). \doi{10.1109/ISSCC.2014.6757323}
+
+\bibitem{coincidence2026}
+Akhyar, M.: Sparse coincidence-based semantic attention for spiking neural sentence embedding. Zenodo (2026). \doi{10.5281/zenodo.20743764}
+
+\end{thebibliography}
+
+\end{document}

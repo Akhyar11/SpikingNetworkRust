@@ -1,0 +1,14 @@
+{
+ "variant": "gru",
+ "seed": 2,
+ "epochs": 2.0,
+ "steps": 7686,
+ "train_seconds": 889.1804563999176,
+ "trainable_params_total": 16778752,
+ "embedding_params": 16384000,
+ "non_embedding_params": 394752,
+ "encode_ms_per_sentence": 0.32405405071171667,
+ "final_loss": 0.005229652737034485,
+ "bs": 64,
+ "threads": 3
+}

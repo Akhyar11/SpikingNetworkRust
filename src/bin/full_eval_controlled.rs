@@ -340,6 +340,9 @@ fn eval_all_datasets(embedder: &mut SpikingSentenceEmbedder, label: &str) -> (se
     println!("  [{label}]");
     let mut stsb_score = 0.0;
     
+    let mut total_human_pairs = 0;
+    let mut weighted_human_pearson = 0.0;
+
     for (name, path) in &datasets {
         let f = match File::open(path) {
             Ok(f) => f,
@@ -357,6 +360,22 @@ fn eval_all_datasets(embedder: &mut SpikingSentenceEmbedder, label: &str) -> (se
         if *name == "STS-B" {
             stsb_score = r;
         }
+
+        if *name != "ALL-STS" {
+            total_human_pairs += data.len();
+            weighted_human_pearson += (r as f64) * (data.len() as f64);
+        }
+    }
+
+    if total_human_pairs > 0 {
+        let human_weighted_r = (weighted_human_pearson / total_human_pairs as f64) as f32;
+        println!("    ----------------------------------------");
+        println!("    ALL-STS (Human, weighted) | Pearson: {human_weighted_r:.4} | n={total_human_pairs}");
+        println!("    ----------------------------------------");
+        results.insert("ALL-STS-human-weighted".to_string(), json!({
+            "pearson": human_weighted_r,
+            "n_pairs": total_human_pairs
+        }));
     }
     
     let avg_sops = embedder.metrics.total_sops as f64 / embedder.metrics.total_sentences.max(1) as f64;

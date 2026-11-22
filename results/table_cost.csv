@@ -1,0 +1,8 @@
+model,train_s_mean,enc_ms_per_sent,sparsity_excl_pad,spikes_per_sentence
+"LIF-pooler (Rust, distill) [ours]",2227.345504941,0.32526375821474923,0.6590323128108976,1174.9542317012945
+"LIF-pooler (Rust, STS-B-train human labels)",119.48850559266667,0.7235485593494815,0.5881326471190519,1419.2702339523828
+"mean-pool table, no LIF (torch)",131.3401017189026,0.019317348591376533,,
+"ANN twin (continuous, exact backprop)",538.175754626592,0.055221561713641974,,
+"SNN, exact surrogate BPTT (torch)",602.448655128479,0.10108278520301495,,
+"SNN, exact BPTT + trained float beta",627.2726531028748,0.10972660260845145,,
+GRU(256) mean-pool (torch),897.3496166070303,0.31002128994596717,,

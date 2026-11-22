@@ -1,0 +1,17 @@
+{
+  "d": 256,
+  "data": "data_eval/train_stsb_human.json",
+  "emb_spikes_total": 41331457,
+  "encode_ms_per_sentence": 0.7415268073941357,
+  "epochs": 10,
+  "lr": 2.0,
+  "max_len": 128,
+  "n_sentences": 29023,
+  "seed": 1,
+  "sparsity_excl_pad": 0.5867330383539816,
+  "spikes_per_sentence": 1424.0932019432864,
+  "steps": 1790,
+  "token_slots_total": 100011520,
+  "train_seconds": 122.279309414,
+  "vocab_size": 64000
+}

@@ -1,0 +1,14 @@
+{
+ "variant": "snn_sg_beta",
+ "seed": 1,
+ "epochs": 2.0,
+ "steps": 7686,
+ "train_seconds": 617.9711806774139,
+ "trainable_params_total": 16384256,
+ "embedding_params": 16384000,
+ "non_embedding_params": 256,
+ "encode_ms_per_sentence": 0.10487469183323743,
+ "final_loss": 0.023319105356931685,
+ "bs": 64,
+ "threads": 3
+}
